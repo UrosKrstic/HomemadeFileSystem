@@ -1,0 +1,7 @@
+- cluster size is 2KB = 2 * 2^10 B = 2^11B
+- 0. cluster occupied with bit vector
+- bit vector (1 - cluster in use, 0 - cluster not in use)
+- indexed allocation (in two levels)
+- index block == cluster size
+- index block has 512 entries
+- first level index block of root dir in the 1. cluster
