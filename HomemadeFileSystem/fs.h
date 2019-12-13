@@ -10,36 +10,36 @@ const unsigned int FEXTLEN = 3;
 class KernelFS;
 class Partition;
 class File;
-namespace fs {
-	class FS {
-	public:
-		~FS();
 
-		//montira particiju
-		//vraca 0 u slucaju neuspeha ili 1 u slucaju uspeha
-		static char mount(Partition *partition);
+class FS {
+public:
+	~FS();
 
-		//demontira particiju
-		//vraca 0 u slucaju neuspeha ili 1 u slucaju uspeha
-		static char unmount();
+	//montira particiju
+	//vraca 0 u slucaju neuspeha ili 1 u slucaju uspeha
+	static char mount(Partition *partition);
 
-		//formatira particiju
-		//vraca 0 u slucaju neuspeha ili 1 u slucaju uspeha
-		static char format();
+	//demontira particiju
+	//vraca 0 u slucaju neuspeha ili 1 u slucaju uspeha
+	static char unmount();
 
-		//vraca -1 u slucaju neuspeha ili broj fajlova u slucaju uspeha 
-		static FileCnt readRootDir();
+	//formatira particiju
+	//vraca 0 u slucaju neuspeha ili 1 u slucaju uspeha
+	static char format();
 
-		//argument je naziv fajla sa apsolutnom putanjom
-		static char doesExist(char *fname);
+	//vraca -1 u slucaju neuspeha ili broj fajlova u slucaju uspeha 
+	static FileCnt readRootDir();
 
-		static File * open(char * fname, char mode);
-		static char deleteFile(char * fname);
-	protected:
-		FS();
-		static KernelFS *myImpl;
-	};
-}
+	//argument je naziv fajla sa apsolutnom putanjom
+	static char doesExist(char *fname);
+
+	static File * open(char * fname, char mode);
+	static char deleteFile(char * fname);
+protected:
+	FS();
+	static KernelFS *myImpl;
+};
+
 
 
 #endif // _FS_H_
