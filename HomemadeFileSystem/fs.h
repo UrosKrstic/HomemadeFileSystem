@@ -40,7 +40,5 @@ protected:
 	static KernelFS *myImpl;
 };
 
-
-
 #endif // _FS_H_
 
