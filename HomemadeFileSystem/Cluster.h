@@ -7,7 +7,7 @@ protected:
 	ClusterNo clusterNumber;
 	char data[ClusterSize] = {0};
 	unsigned int ClusterSizeInt = ClusterSize / sizeof(unsigned int);
-	bool dirty = false;
+	bool dirty = true;
 	Partition * part;
 public:
 	Cluster(ClusterNo clusterNumber, Partition * part, bool loadClusterData = true);

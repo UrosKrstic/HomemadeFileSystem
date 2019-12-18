@@ -1,5 +1,6 @@
 #include "KernelFS.h"
 #include <iostream>
+#include <regex>
 #include "FCB.h"
 #include "RootDirMemoryHandler.h"
 #include "PartitionError.h"
@@ -19,7 +20,7 @@ BOOL CALLBACK kernel_fs::InitFunction(PINIT_ONCE InitOnce, PVOID Parameter, PVOI
 	InitializeConditionVariable(&kernel_fs::isMountedCond);
 	InitializeConditionVariable(&kernel_fs::openFilesCond);
 	InitializeCriticalSection(&kernel_fs::fsLock);
-	std::cout << "Uspesno inicijalizovano\n";
+	//std::cout << "Uspesno inicijalizovano\n";
 	return true;
 }
 
@@ -70,7 +71,12 @@ char KernelFS::doesExist(std::string& fname) {
 File * KernelFS::open(char * fname, char mode) {
 	if (!formatingInProgress) {
 		try {
+			std::regex reg("^/[^\\.]*\\..{3}&");
 			std::string fpath(fname);
+			std::cmatch m;
+			if (!std::regex_match(fpath.c_str(), m, reg)) return nullptr;
+			//rootDirMemoryHandler->createNewFile(fpath);
+			//return nullptr;
 			if ((*fileNameToFCBmap)[fpath] == nullptr) {
 				if (mode == 'w') {
 					rootDirMemoryHandler->createNewFile(fpath);
@@ -91,8 +97,14 @@ File * KernelFS::open(char * fname, char mode) {
 }
 
 char KernelFS::deleteFile(char * fname) {
+	std::regex reg("/[^\\.]*\\..{3}");
 	std::string fpath(fname);
+	std::cmatch m;
+	if (!std::regex_match(fpath.c_str(), m, reg)) return 0;
 	rootDirMemoryHandler->deleteFile(fpath);
+	FCB * fcb = (*fileNameToFCBmap)[fpath];
+	(*fileNameToFCBmap)[fpath] = nullptr;
+	delete fcb;
 	return 0;
 }
 

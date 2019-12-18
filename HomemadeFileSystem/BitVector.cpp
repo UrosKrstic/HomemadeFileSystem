@@ -16,6 +16,7 @@ ClusterNo BitVector::getFreeClusterNumberForUse() {
 			for (unsigned j = 0; j < 8; j++) {
 				if (data[i] & bitMask) {
 					dirty = true;
+					data[i] &= ~bitMask;
 					return indexToClusterNo(i, j);
 				}
 				bitMask >>= 1;
@@ -25,8 +26,9 @@ ClusterNo BitVector::getFreeClusterNumberForUse() {
 	}
 	bitMask = startingBitMask;
 	for (unsigned i = 0; i < remainder; i++) {
-		if (data[totalBytes] * bitMask) {
+		if (data[totalBytes] & bitMask) {
 			dirty = true;
+			data[totalBytes] &= ~bitMask;
 			return indexToClusterNo(totalBytes, i);
 		}
 		bitMask >>= 1;
@@ -42,7 +44,7 @@ void BitVector::freeUpClusters(std::vector<ClusterNo>& clusterVector) {
 }
 
 void BitVector::format() {
-	std::fill_n(data, ClusterSize, 1);
+	std::fill_n(data, ClusterSize, 0xff);
 	data[0] &= notAllowedBitMask;
 	dirty = true;
 }

@@ -16,7 +16,7 @@ DataCluster & SecondLevelIndexCluster::addDataCluster(ClusterNo cNo, bool loadCl
 	dirty = true;
 	auto * data_32 = reinterpret_cast<unsigned int *> (data);
 	data_32[currentSize++] = cNo;
-	dataClusters.emplace_back(clusterNumber, part, loadClusterData);
+	dataClusters.emplace_back(cNo, part, loadClusterData);
 	return dataClusters[currentSize - 1];
 }
 

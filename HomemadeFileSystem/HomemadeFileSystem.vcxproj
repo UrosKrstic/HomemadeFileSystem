@@ -162,6 +162,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="disk1.dat" />
+    <None Include="disk2.dat" />
     <None Include="p1.ini" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

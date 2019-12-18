@@ -128,5 +128,8 @@
     <None Include="p1.ini">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="disk2.dat">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
