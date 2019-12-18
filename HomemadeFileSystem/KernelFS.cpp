@@ -1,6 +1,8 @@
 #include "KernelFS.h"
 #include <iostream>
 #include "FCB.h"
+#include "RootDirMemoryHandler.h"
+#include "PartitionError.h"
 
 
 INIT_ONCE kernel_fs::initOnceVariable = INIT_ONCE_STATIC_INIT;
@@ -22,59 +24,75 @@ BOOL CALLBACK kernel_fs::InitFunction(PINIT_ONCE InitOnce, PVOID Parameter, PVOI
 }
 
 char KernelFS::mount(Partition* partition) {
-	this->partition = partition;
-	partitionMounted = true;
-	bitVector = new BitVector(bitVectorClusterNo, partition);
-	rootDirFirstLvlIndex = new FirstLevelIndexCluster(rootDirFirstLevelIndexClusterNo, partition, true);
-
-	for (unsigned i = 0; i < rootDirFirstLvlIndex->getCurrentSize_32b(); i++) {
-		for (unsigned j = 0; j < rootDirFirstLvlIndex[i].getCurrentSize_32b(); j++) {
-			unsigned fileNum = ClusterSize / sizeof(FCBData);
-			auto *fcbData = reinterpret_cast<FCBData*>(rootDirFirstLvlIndex[i][j].getData());
-			for (unsigned k = 0; k < fileNum; k++) {
-				if (fcbData[k].allZeros()) break;
-				else if (!fcbData[k].isEmpty()) {
-					std::string fullName = std::string("/") + std::string(fcbData[k].name);
-					fullName.erase(fullName.find_first_of(std::string(" ")));
-					std::string ext(std::string(".") + std::string(fcbData[k].ext));
-					ext.resize(4);
-					fullName += ext;
-					fileNameToFCBmap[fullName] = new FCB(i, j, k, fcbData[k]);
-				}
-			}
-		}
+	try {
+		this->partition = partition;
+		partitionMounted = true;
+		bitVector = new BitVector(bitVectorClusterNo, partition);
+		rootDirMemoryHandler = new RootDirMemoryHandler(*bitVector, rootDirFirstLevelIndexClusterNo, partition);
+		fileNameToFCBmap = rootDirMemoryHandler->getNameToFCBMap();
+		fileCount = fileNameToFCBmap->size();
+		return 1;
 	}
-	fileCount = fileNameToFCBmap.size();
-
-	return 1;
+	catch(PartitionError& pe) {
+		std::cout << "Mount failed: " << pe.what() << std::endl;
+		return 0;
+	}
 }
 
 char KernelFS::unmount() {
-	partition = nullptr;
-	partitionMounted = false;
-	//TODO: PRESNIMITI SVE NA PARTICIJU 
-	delete bitVector;
-	delete rootDirFirstLvlIndex;
-	std::cout << "Budi niti na mount cond\n";
-	WakeAllConditionVariable(&kernel_fs::isMountedCond);
-	return 1;
+	try {
+		partition = nullptr;
+		partitionMounted = false;
+		bitVector->saveToDrive();
+		rootDirMemoryHandler->saveToDrive();
+		delete bitVector;
+		delete rootDirMemoryHandler;
+		std::cout << "Budi niti na mount cond\n";
+		WakeAllConditionVariable(&kernel_fs::isMountedCond);
+		return 1;
+	}
+	catch (PartitionError& pe) {
+		std::cout << "Unmount failed: " << pe.what() << std::endl;
+		return 0;
+	}
 }
 
 char KernelFS::format() {
 	bitVector->format();
-	//TODO: reset root dir
+	rootDirMemoryHandler->format();
 	return 1;
 }
 
-char KernelFS::doesExist(std::string fname) {
-	return fileNameToFCBmap[fname] != nullptr;
+char KernelFS::doesExist(std::string& fname) {
+	return (*fileNameToFCBmap)[fname] != nullptr;
 }
 
 File * KernelFS::open(char * fname, char mode) {
-	
+	if (!formatingInProgress) {
+		try {
+			std::string fpath(fname);
+			if ((*fileNameToFCBmap)[fpath] == nullptr) {
+				if (mode == 'w') {
+					rootDirMemoryHandler->createNewFile(fpath);
+					return nullptr; // nece biti nullptr 
+				}
+				return nullptr;
+			}
+			else {
+				return nullptr;
+			}
+		}
+		catch(PartitionError& pe) {
+			std::cout << "Opening of file failed: " << fname  << " " << pe.what() << std::endl;
+			return nullptr;
+		}
+	}
+	else return nullptr;
 }
 
 char KernelFS::deleteFile(char * fname) {
+	std::string fpath(fname);
+	rootDirMemoryHandler->deleteFile(fpath);
 	return 0;
 }
 

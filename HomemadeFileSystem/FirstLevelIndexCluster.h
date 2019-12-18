@@ -4,11 +4,15 @@
 #include "SecondLevelIndexCluster.h"
 
 class FirstLevelIndexCluster : public IndexCluster {
-private:
-	std::vector<SecondLevelIndexCluster> secondLvlClusters;
+	
 public:
-	FirstLevelIndexCluster(ClusterNo clusterNumber, Partition * part, bool loadAllData = false);
+	FirstLevelIndexCluster(ClusterNo clusterNumber, Partition * part, bool loadAllSubClusters = false, bool loadClusterData = true);
 	std::vector<SecondLevelIndexCluster>& getSecondLevelIndexClusters() { return secondLvlClusters; }
 	SecondLevelIndexCluster& operator[](int i) { return secondLvlClusters[i]; }
+	SecondLevelIndexCluster& addSecondLevelIndexCluster(ClusterNo cNo, bool loadAllSubClusters = false, bool loadClusterData = false);
+	void saveToDrive();
+	void format();
+private:
+	std::vector<SecondLevelIndexCluster> secondLvlClusters;
 };
 

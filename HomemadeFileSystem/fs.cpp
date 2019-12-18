@@ -9,21 +9,21 @@ char FS::mount(Partition* partition) {
 	//one time initialization of global structures
 	InitOnceExecuteOnce(&kernel_fs::initOnceVariable, kernel_fs::InitFunction, nullptr, nullptr);
 
-	std::cout << "Ulazi u kriticnu sekciju nit id = " << GetCurrentThreadId() << "\n";
+	//std::cout << "Ulazi u kriticnu sekciju nit id = " << GetCurrentThreadId() << "\n";
 	EnterCriticalSection(&kernel_fs::fsLock);
-	std::cout << "Usla u kriticnu sekciju nit id = " << GetCurrentThreadId() << "\n";
+	//std::cout << "Usla u kriticnu sekciju nit id = " << GetCurrentThreadId() << "\n";
 
 	while (KernelFS::isPartitionMounted()) {
-		std::cout << "(mount)Bice zablokirana nit sa id = " << GetCurrentThreadId() << "\n";
+		//std::cout << "(mount)Bice zablokirana nit sa id = " << GetCurrentThreadId() << "\n";
 		SleepConditionVariableCS(&kernel_fs::isMountedCond, &kernel_fs::fsLock, INFINITE);
-		std::cout << "(mount)Odblokirana nit, id = " << GetCurrentThreadId() << "\n";
+		//std::cout << "(mount)Odblokirana nit, id = " << GetCurrentThreadId() << "\n";
 	}
-	std::cout << "radi mount, nit id = " << GetCurrentThreadId() << "\n";
+	//std::cout << "radi mount, nit id = " << GetCurrentThreadId() << "\n";
 	myImpl = new KernelFS();
 	char returnValue = myImpl->mount(partition);
 
 	LeaveCriticalSection(&kernel_fs::fsLock);
-	std::cout << "Izasla iz kriticne sekcije nit id = " << GetCurrentThreadId() << "\n";
+	//std::cout << "Izasla iz kriticne sekcije nit id = " << GetCurrentThreadId() << "\n";
 	return returnValue;
 }
 
@@ -68,7 +68,8 @@ FileCnt FS::readRootDir() {
 
 char FS::doesExist(char* fname) {
 	if (KernelFS::isPartitionMounted()) {
-		return myImpl->doesExist(std::string(fname));
+		std::string fpath(fname);
+		return myImpl->doesExist(fpath);
 	}
 	return 0;
 }

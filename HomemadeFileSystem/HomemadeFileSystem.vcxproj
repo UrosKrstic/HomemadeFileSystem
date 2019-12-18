@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -123,12 +123,17 @@
     <ClInclude Include="BitVector.h" />
     <ClInclude Include="Cluster.h" />
     <ClInclude Include="DataCluster.h" />
+    <ClInclude Include="FCB.h" />
     <ClInclude Include="file.h" />
     <ClInclude Include="FirstLevelIndexCluster.h" />
     <ClInclude Include="fs.h" />
     <ClInclude Include="IndexCluster.h" />
+    <ClInclude Include="KernelFile.h" />
     <ClInclude Include="KernelFS.h" />
+    <ClInclude Include="MemoryHandler.h" />
     <ClInclude Include="part.h" />
+    <ClInclude Include="PartitionError.h" />
+    <ClInclude Include="RootDirMemoryHandler.h" />
     <ClInclude Include="SecondLevelIndexCluster.h" />
   </ItemGroup>
   <ItemGroup>
@@ -139,11 +144,17 @@
     <ClCompile Include="BitVector.cpp" />
     <ClCompile Include="Cluster.cpp" />
     <ClCompile Include="DataCluster.cpp" />
+    <ClCompile Include="FCB.cpp" />
+    <ClCompile Include="file.cpp" />
     <ClCompile Include="FirstLevelIndexCluster.cpp" />
     <ClCompile Include="fs.cpp" />
     <ClCompile Include="IndexCluster.cpp" />
+    <ClCompile Include="KernelFile.cpp" />
     <ClCompile Include="KernelFS.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MemoryHandler.cpp" />
+    <ClCompile Include="PartitionError.cpp" />
+    <ClCompile Include="RootDirMemoryHandler.cpp" />
     <ClCompile Include="SecondLevelIndexCluster.cpp" />
   </ItemGroup>
   <ItemGroup>

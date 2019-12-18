@@ -1,12 +1,19 @@
 #include "Cluster.h"
+#include "PartitionError.h"
 
-Cluster::Cluster(ClusterNo clusterNumber, Partition * part) {
+Cluster::Cluster(ClusterNo clusterNumber, Partition * part, bool loadClusterData) {
 	this->clusterNumber = clusterNumber;
 	this->part = part;
-	part->readCluster(clusterNumber, data);
-	dirty = false;
+	if (loadClusterData) {
+		auto ret = part->readCluster(clusterNumber, data);
+		if (ret == 0) throw PartitionError();
+		dirty = false;
+	}
 }
 
-Cluster::~Cluster() {
-	if (dirty) part->writeCluster(clusterNumber, data);
+void Cluster::saveToDrive() {
+	if (dirty) {
+		auto ret = part->writeCluster(clusterNumber, data);
+		if (ret == 0) throw PartitionError();
+	}
 }
