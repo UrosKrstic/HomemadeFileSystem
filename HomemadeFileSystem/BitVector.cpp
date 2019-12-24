@@ -45,6 +45,7 @@ void BitVector::freeUpClusters(std::vector<ClusterNo>& clusterVector) {
 
 void BitVector::format() {
 	std::fill_n(data, ClusterSize, 0xff);
+	//memset(data, 0xff, ClusterSize);
 	data[0] &= notAllowedBitMask;
 	dirty = true;
 }

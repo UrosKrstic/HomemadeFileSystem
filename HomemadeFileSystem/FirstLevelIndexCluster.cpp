@@ -1,5 +1,6 @@
 #include "FirstLevelIndexCluster.h"
 #include <iostream>
+#include "ClusterFullException.h"
 
 
 FirstLevelIndexCluster::FirstLevelIndexCluster(ClusterNo clusterNumber, Partition * part, bool loadAllSubClusters, bool loadClusterData) : IndexCluster(clusterNumber, part, loadClusterData) {
@@ -14,12 +15,24 @@ FirstLevelIndexCluster::FirstLevelIndexCluster(ClusterNo clusterNumber, Partitio
 }
 
 SecondLevelIndexCluster & FirstLevelIndexCluster::addSecondLevelIndexCluster(unsigned int cNo, bool loadAllSubClusters, bool loadClusterData) {
+	if (currentSize == ClusterSizeInt) throw ClusterFullException();
 	dirty = true;
 	auto * data_32 = reinterpret_cast<unsigned int *> (data);
 	data_32[currentSize++] = cNo;
-	//std::cout << reinterpret_cast<int*>(data)[currentSize - 1] << std::endl;
-	secondLvlClusters.emplace_back(cNo, part, loadAllSubClusters, loadClusterData);
+	SecondLevelIndexCluster sli(cNo, part, loadAllSubClusters, loadClusterData);
+	sli.initDataWithZeros();
+	secondLvlClusters.emplace_back(sli);
+
 	return secondLvlClusters[currentSize - 1];
+}
+
+void FirstLevelIndexCluster::loadSLIClusters() {
+	auto * data_32 = reinterpret_cast<unsigned int *> (data);
+	for (unsigned i = 0; i < currentSize; i++) {
+		SecondLevelIndexCluster sli(data_32[i], part, false, true);
+		sli.loadDataClusters();
+		secondLvlClusters.emplace_back(sli);
+	}
 }
 
 void FirstLevelIndexCluster::saveToDrive() {
@@ -31,6 +44,7 @@ void FirstLevelIndexCluster::saveToDrive() {
 
 void FirstLevelIndexCluster::format() {
 	std::fill_n(data, ClusterSize, 0);
+	//memset(data, 0, ClusterSize);
 	setDirty();
 	secondLvlClusters.clear();
 	currentSize = 0;

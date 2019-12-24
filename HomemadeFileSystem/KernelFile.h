@@ -3,12 +3,9 @@
 #include "FCB.h"
 
 class KernelFile {
-private:
-	FCB * myFCB;
-	unsigned int currentSize;
-	unsigned int currentPos;
 public:
-	KernelFile(unsigned int currentSize, unsigned int currentPos, FCB * myFCB);
+	KernelFile(FCB * myFCB, char mode, FirstLevelIndexCluster * fli);
+	~KernelFile();
 	char write(BytesCnt cnt, char *buffer);
 	BytesCnt read(BytesCnt cnt, char * buffer);
 	char seek(BytesCnt newPos);
@@ -18,7 +15,16 @@ public:
 	}
 	BytesCnt getFileSize() { return currentSize; }
 	char truncate();
-	~KernelFile();
+	
+private:
+	FCB * myFCB;
+	char mode;
+	unsigned int currentSize;
+	unsigned int currentPos;
+	FirstLevelIndexCluster* fliCluster;
+	CRITICAL_SECTION critSection;
+	CONDITION_VARIABLE condVar;
+
 };
 
 #endif //_KERNELFILE_H_

@@ -29,7 +29,7 @@ char KernelFS::mount(Partition* partition) {
 		this->partition = partition;
 		partitionMounted = true;
 		bitVector = new BitVector(bitVectorClusterNo, partition);
-		rootDirMemoryHandler = new RootDirMemoryHandler(*bitVector, rootDirFirstLevelIndexClusterNo, partition);
+		rootDirMemoryHandler = new RootDirMemoryHandler(*bitVector, rootDirFirstLevelIndexClusterNo, partition, *this);
 		fileNameToFCBmap = rootDirMemoryHandler->getNameToFCBMap();
 		fileCount = fileNameToFCBmap->size();
 		return 1;
@@ -71,22 +71,24 @@ char KernelFS::doesExist(std::string& fname) {
 File * KernelFS::open(char * fname, char mode) {
 	if (!formatingInProgress) {
 		try {
-			std::regex reg("^/[^\\.]*\\..{3}&");
+			std::regex reg("/[^\\.]*\\..{3}");
 			std::string fpath(fname);
 			std::cmatch m;
-			if (!std::regex_match(fpath.c_str(), m, reg)) return nullptr;
-			//rootDirMemoryHandler->createNewFile(fpath);
-			//return nullptr;
+			if (!std::regex_match(fpath.c_str(), m, reg)) { std::cout << "Nije prosao regex\n"; return nullptr; }
 			if ((*fileNameToFCBmap)[fpath] == nullptr) {
 				if (mode == 'w') {
-					rootDirMemoryHandler->createNewFile(fpath);
-					return nullptr; // nece biti nullptr 
+					FCB* fcb = rootDirMemoryHandler->createNewFile(fpath);
+					if (fcb == nullptr) return nullptr;
+					else return fcb->createFileInstance(mode);
 				}
-				return nullptr;
 			}
 			else {
-				return nullptr;
+				FCB* fcb = (*fileNameToFCBmap)[fpath];
+				if (mode == 'w' || mode == 'r' || mode == 'a') {
+					return fcb->createFileInstance(mode);
+				}
 			}
+			return nullptr;
 		}
 		catch(PartitionError& pe) {
 			std::cout << "Opening of file failed: " << fname  << " " << pe.what() << std::endl;

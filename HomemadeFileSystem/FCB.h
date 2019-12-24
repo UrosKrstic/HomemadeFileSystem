@@ -9,6 +9,8 @@ class FirstLevelIndexCluster;
 
 class FCB {
 public:
+
+	enum Mode {idle, reading, writing, append};
 	
 	typedef struct FCBIndexStruct {
 		ClusterNo secondLvlIndex = 0;
@@ -50,9 +52,11 @@ public:
 			return name[0] == 0;
 		}
 	} FCBData;
-
-	FCB(FCBIndex fcbIndex, FCBData* fcbData, Partition * part);
-	KernelFile * createKernelFile(char mode);
+	friend class KernelFile;
+	FCB(FCBIndex& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS);
+	FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS);
+	~FCB();
+	File * createFileInstance(char mode);
 	char write(BytesCnt cnt, char *buffer, unsigned int& currentPosOfFile, unsigned int & currentSizeOfFile);
 	BytesCnt read(BytesCnt cnt, char *buffer, unsigned int& currentPosOfFile);
 	char truncate(unsigned int& currentPosOfFile, unsigned int& currentSizeOfFile);
@@ -60,12 +64,21 @@ public:
 	FCBIndex getFCBIndex() { return fcbIndex; }
 private:
 	unsigned numberOfOpenFiles = 0;
-	Partition * part;
-	FirstLevelIndexCluster * FLICluster = nullptr;
-	FCBData * fcbData;
+
+	CRITICAL_SECTION criticalSection;
+	CONDITION_VARIABLE readCond, writeCond;
+	int readCount = 0;
+	Mode currentMode = idle;
+	
 	FCBIndex fcbIndex;
+	FCBData * fcbData;
+	Partition * part;
+	BitVector &bitVector;
+	KernelFS &kernelFS;
+	FirstLevelIndexCluster * fliCluster;
+	
 	static constexpr unsigned numOfFreeBytes = 12;
-	static constexpr  unsigned rowsInCluster = ClusterSize / sizeof(FCB::FCBData);
+	static constexpr  unsigned rowsInCluster = ClusterSize / sizeof(FCBData);
 };
 
 

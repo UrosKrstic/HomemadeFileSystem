@@ -20,8 +20,8 @@ std::map<std::string, FCB*>* RootDirMemoryHandler::getNameToFCBMap() {
 						} catch(std::exception&) {}
 						std::string ext(std::string(".") + std::string(fcbData[k].ext, FEXTLEN));
 						fullName += ext;
-						std::cout << "Puno ime starog fajla sa diska: " << fullName.c_str() << std::endl;
-						nameToFCBmap[fullName] = new FCB(FCB::FCBIndex(i, j, k), &fcbData[k], part);
+						//std::cout << "Puno ime starog fajla sa diska: " << fullName.c_str() << std::endl;
+						nameToFCBmap[fullName] = new FCB(FCB::FCBIndex(i, j, k), &fcbData[k], part, bitVector, kernelFS);
 					}
 					else {
 						leftoverFreeFileSlots.push(FCBIndex(i, j, k));
@@ -109,7 +109,7 @@ FCB * RootDirMemoryHandler::createNewFile(std::string& fpath) {
 		memcpy(fcbData[ind.ridc].ext, ext.c_str(), FEXTLEN);
 		fcbData[ind.ridc].fileSize = 0;
 		fcbData[ind.ridc].firstIndexClusterNo = 0;
-		FCB* fcb = new FCB(FCB::FCBIndex(ind.sli, ind.dc, ind.ridc), &fcbData[ind.ridc], part);
+		FCB* fcb = new FCB(FCB::FCBIndex(ind.sli, ind.dc, ind.ridc), &fcbData[ind.ridc], part, bitVector, kernelFS);
 		nameToFCBmap[fpath] = fcb;
 		return fcb;
 	}

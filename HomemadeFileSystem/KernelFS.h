@@ -30,9 +30,8 @@ private:
 	RootDirMemoryHandler * rootDirMemoryHandler = nullptr;
 	unsigned n = 100;
 	std::map<std::string, FCB*>* fileNameToFCBmap = nullptr;
-	bool areOpenFiles = false;
 	bool formatingInProgress = false;
-	int fileCount = 0;
+	unsigned fileCount = 0, openFileCount = 0;
 
 public:
 	KernelFS()=default;
@@ -42,7 +41,9 @@ public:
 	char doesExist(std::string& fname);
 	File * open(char * fname, char mode);
 	char deleteFile(char * fname);
-	bool openFiles() { return areOpenFiles; }
+	bool openFiles() { return openFileCount > 0; }
+	void addOpenFile() { openFileCount++; }
+	void removeOpenFile() { openFileCount--; }
 	bool isFormatingInProgress() const { return formatingInProgress; }
 	void setFormatingInProgress(bool value) { formatingInProgress = value; }
 	int getFileCount() const { return fileCount; }

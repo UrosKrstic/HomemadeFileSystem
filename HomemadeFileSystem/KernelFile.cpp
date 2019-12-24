@@ -1,24 +1,52 @@
 #include "KernelFile.h"
+#include "FirstLevelIndexCluster.h"
 
 
 
-KernelFile::KernelFile(unsigned int currentSize, unsigned int currentPos, FCB * myFCB) {
-	this->currentSize = currentSize;
-	this->currentPos = currentPos;
+KernelFile::KernelFile(FCB * myFCB, char mode, FirstLevelIndexCluster * fli) {
+	this->currentSize = myFCB->fcbData->fileSize;
+	this->currentPos = mode != 'a' ? 0 : currentSize;
+	this->mode = mode;
 	this->myFCB = myFCB;
+	fliCluster = fli;
+	InitializeCriticalSection(&critSection);
+	InitializeConditionVariable(&condVar);
 }
+
+KernelFile::~KernelFile() {
+	if (mode == 'r') {
+		myFCB->readCount--;
+		if (myFCB->readCount == 0) {
+			myFCB->currentMode = FCB::idle;
+			WakeConditionVariable(&myFCB->writeCond);
+			WakeAllConditionVariable(&myFCB->readCond);
+		}
+	}
+	else {
+		myFCB->currentMode = FCB::idle;
+		WakeConditionVariable(&myFCB->writeCond);
+		WakeAllConditionVariable(&myFCB->readCond);
+	}
+	DeleteCriticalSection(&critSection);
+	//SAVE SHIT GOD DAAAAMN TODO: DO IT M8
+}
+
 
 char KernelFile::write(BytesCnt cnt, char * buffer) {
-	return myFCB->write(cnt, buffer, currentPos, currentSize);
+	if (mode == 'r' || cnt + currentPos > FirstLevelIndexCluster::getMaxFileSize()) return 0;
+
+
+
+	return 0;
 }
 
-BytesCnt KernelFile::read(BytesCnt cnt, char * buffer) {
-	//unsigned int returnValue;
-	if (eof()) return 0;
-	else return myFCB->read(cnt, buffer, currentPos);
+BytesCnt KernelFile::read(BytesCnt cnt, char * buffer)  {	
+	if (eof() && mode != 'r') return 0;
+	return 0;
 }
 
 char KernelFile::seek(BytesCnt newPos) {
+	char returnVal = 0;
 	if (newPos < currentSize) {
 		currentPos = newPos;
 		return 1;
@@ -31,9 +59,7 @@ char KernelFile::seek(BytesCnt newPos) {
 
 char KernelFile::truncate()
 {
-	return myFCB->truncate(currentPos, currentSize);
+	return 0;
 }
 
-KernelFile::~KernelFile() {
-	//TODO: CUVANJE SVEGA I BRISANJE FAJLA
-}
+

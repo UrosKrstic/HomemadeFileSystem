@@ -9,7 +9,8 @@ public:
 	SecondLevelIndexCluster(ClusterNo clusterNumber, Partition * part, bool loadAllSubClusters = false, bool loadClusterData = true);
 	std::vector<DataCluster>& getSecondLevelIndexClusters() { return dataClusters; }
 	DataCluster& operator[](int i) { return dataClusters[i]; }
-	DataCluster& addDataCluster(ClusterNo cNo, bool loadClusterData = false);
+	DataCluster& addDataCluster(ClusterNo cNo, bool loadClusterData = false, bool initClusterData = true);
+	void loadDataClusters(bool loadSubClusterData = false);
 	void saveToDrive();
 	void unSetDirtyForAllDataClusters();
 };

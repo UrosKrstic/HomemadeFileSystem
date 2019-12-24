@@ -9,7 +9,7 @@ class FCB;
 
 class RootDirMemoryHandler : public MemoryHandler {
 public:
-	RootDirMemoryHandler(BitVector& bitVector, ClusterNo no, Partition * part) : MemoryHandler(bitVector, no, part, true) {}
+	RootDirMemoryHandler(BitVector& bitVector, ClusterNo no, Partition * part, KernelFS& kerFS) : MemoryHandler(bitVector, no, part, true), kernelFS(kerFS) {}
 
 	std::map<std::string, FCB*>* getNameToFCBMap();
 	FCB * createNewFile(std::string& fpath);
@@ -27,6 +27,7 @@ public:
 	} FCBIndex;
 
 private:
+	KernelFS& kernelFS;
 	std::map<std::string, FCB*> nameToFCBmap;
 	std::queue<FCBIndex> leftoverFreeFileSlots;
 	FCBIndex nextFreeSlot;
