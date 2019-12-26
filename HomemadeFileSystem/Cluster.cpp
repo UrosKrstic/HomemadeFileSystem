@@ -13,6 +13,7 @@ Cluster::Cluster(ClusterNo clusterNumber, Partition * part, bool loadClusterData
 }
 
 void Cluster::initDataWithZeros() {
+	dirty = true;
 	if (data == nullptr) data = new char[ClusterSize];
 	memset(data, 0, ClusterSize);
 }

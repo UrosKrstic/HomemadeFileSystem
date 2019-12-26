@@ -33,9 +33,6 @@
     <ClInclude Include="IndexCluster.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FirstLevelIndexCluster.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="KernelFS.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -58,6 +55,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PartitionError.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FirstLevelIndexCluster.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ClusterFullException.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

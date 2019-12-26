@@ -122,6 +122,7 @@
   <ItemGroup>
     <ClInclude Include="BitVector.h" />
     <ClInclude Include="Cluster.h" />
+    <ClInclude Include="ClusterFullException.h" />
     <ClInclude Include="DataCluster.h" />
     <ClInclude Include="FCB.h" />
     <ClInclude Include="file.h" />

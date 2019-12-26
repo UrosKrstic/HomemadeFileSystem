@@ -1,6 +1,8 @@
 #ifndef _KERNELFILE_H_
 #define _KERNELFILE_H_
 #include "FCB.h"
+#include "DataCluster.h"
+#include <queue>
 
 class KernelFile {
 public:
@@ -17,13 +19,19 @@ public:
 	char truncate();
 	
 private:
+
+	struct dataClusterWithReferenceBit {
+		DataCluster *dataCluster;
+		bool isReferenced;
+	};
+
 	FCB * myFCB;
 	char mode;
 	unsigned int currentSize;
 	unsigned int currentPos;
 	FirstLevelIndexCluster* fliCluster;
-	CRITICAL_SECTION critSection;
-	CONDITION_VARIABLE condVar;
+	std::map<BytesCnt, DataCluster*> byteCntToDataCluster;
+	std::queue<dataClusterWithReferenceBit> SecondChanceCache;
 
 };
 
