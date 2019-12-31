@@ -41,7 +41,6 @@ KernelFile::~KernelFile() {
 		myFCB->myDC.setDirty();
 
 	}
-	//SAVE SHIT GOD DAAAAMN TODO: DO IT M8
 }
 
 
@@ -52,7 +51,7 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 		try {
 			cNo = myFCB->bitVector.getFreeClusterNumberForUse();
 			if (cNo == 0) return 0;
-			fliCluster = new FirstLevelIndexCluster(cNo, myFCB->part, false, false);
+			myFCB->fliCluster = fliCluster = new FirstLevelIndexCluster(cNo, myFCB->part, false, false);
 			fliCluster->initDataWithZeros();
 			myFCB->fcbData->firstIndexClusterNo = cNo;
 			myFCB->myDC.setDirty();
@@ -194,23 +193,60 @@ char KernelFile::seek(BytesCnt newPos) {
 
 
 char KernelFile::truncate() {
-	int dcIndex = currentPos / ClusterSize;
-	int sliIndex = dcIndex / 512;
+	if (fliCluster == nullptr) return 1;
+	unsigned dcIndex = currentPos / ClusterSize;
+	unsigned sliIndex = dcIndex / 512;
 	dcIndex = dcIndex % 512;
-	dcIndex++;
-	if (dcIndex == 512) {
-		dcIndex = 0;
-		sliIndex++;
-	}
+	unsigned fullSLIStart = sliIndex + 1;
+	
 	std::vector<ClusterNo> cNoVec;
 	auto& sliClusters = fliCluster->getSecondLevelIndexClusters();
-	for (auto iter  = sliClusters.begin() + dcIndex; iter < sliClusters.end(); ++iter) {
-		
+	for (unsigned i = fullSLIStart; i < sliClusters.size(); i++) {
+		cNoVec.push_back(sliClusters[i]->getClusterNumber());
+		auto& dataClusters = sliClusters[i]->getDataClusters();
+		for (unsigned j = 0; j < dataClusters.size(); j++) {  // NOLINT
+			cNoVec.push_back(dataClusters[j]->getClusterNumber());
+			delete dataClusters[j];
+		}
+		delete sliClusters[i];
+	}
+	sliClusters.erase(sliClusters.begin() + fullSLIStart, sliClusters.end());
+	fliCluster->refreshIndexData();
+
+	auto& dataClusters = sliClusters[sliIndex]->getDataClusters();
+	for (unsigned i = dcIndex + 1; i < dataClusters.size(); i++) {
+		cNoVec.push_back(dataClusters[i]->getClusterNumber());
+		delete dataClusters[i];
+	}
+	if (dcIndex + 1 < 512)
+		dataClusters.erase(dataClusters.begin() + dcIndex + 1, dataClusters.end());
+
+	if (currentPos % ClusterSize == 0) {
+		cNoVec.push_back(dataClusters[dcIndex]->getClusterNumber());
+		delete dataClusters[dcIndex];
+		dataClusters.erase(dataClusters.begin() + dcIndex, dataClusters.end());
+	}
+	if (dataClusters.empty()) {
+		cNoVec.push_back(sliClusters[sliIndex]->getClusterNumber());
+		delete sliClusters[sliIndex];
+		sliClusters.erase(sliClusters.begin() + sliIndex, sliClusters.end());
+	}
+	else {
+		sliClusters[sliIndex]->refreshIndexData();
 	}
 
-
+	if (sliClusters.empty()) {
+		cNoVec.push_back(fliCluster->getClusterNumber());
+		delete fliCluster;
+		myFCB->fliCluster = nullptr;
+		myFCB->fcbData->firstIndexClusterNo = 0;
+	}
+	else {
+		fliCluster->refreshIndexData();
+	}
+	currentSize = currentPos;
+	myFCB->fcbData->fileSize = currentSize;
+	myFCB->myDC.setDirty();
 
 	return 0;
 }
-
-

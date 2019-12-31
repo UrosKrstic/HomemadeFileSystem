@@ -20,6 +20,7 @@ public:
 	void loadSLIClusters();
 	void saveToDrive();
 	void format();
+	void refreshIndexData();
 	static unsigned long getMaxFileSize() { return fileMaxSize; }
 private:
 	std::vector<SecondLevelIndexCluster*> secondLvlClusters;

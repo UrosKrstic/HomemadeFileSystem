@@ -20,6 +20,7 @@ public:
 	DataCluster * addCluster(ClusterNo cNo);
 	void loadDataClusters(bool loadSubClusterData = false);
 	void saveToDrive();
+	void refreshIndexData();
 	void unSetDirtyForAllDataClusters();
 };
 

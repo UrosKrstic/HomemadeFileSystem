@@ -54,3 +54,9 @@ void FirstLevelIndexCluster::format() {
 	currentSize = 0;
 }
 
+void FirstLevelIndexCluster::refreshIndexData() {
+	dirty = true;
+	currentSize = secondLvlClusters.size();
+	memset(data + secondLvlClusters.size(), 0, ClusterSize - secondLvlClusters.size() * 4);
+}
+
