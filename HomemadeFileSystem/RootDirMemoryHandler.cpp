@@ -2,6 +2,13 @@
 #include "FCB.h"
 #include <iostream>
 
+RootDirMemoryHandler::~RootDirMemoryHandler() {
+	for (auto& fcb : nameToFCBmap) {
+		delete fcb.second;
+		fcb.second = nullptr;
+	}
+}
+
 std::map<std::string, FCB*>* RootDirMemoryHandler::getNameToFCBMap() {
 	if (!isMapCreated) {
 		unsigned long i = 0, j = 0, k = 0;
@@ -21,7 +28,7 @@ std::map<std::string, FCB*>* RootDirMemoryHandler::getNameToFCBMap() {
 						std::string ext(std::string(".") + std::string(fcbData[k].ext, FEXTLEN));
 						fullName += ext;
 						//std::cout << "Puno ime starog fajla sa diska: " << fullName.c_str() << std::endl;
-						nameToFCBmap[fullName] = new FCB(FCB::FCBIndex(i, j, k), &fcbData[k], part, bitVector, kernelFS);
+						nameToFCBmap[fullName] = new FCB(FCB::FCBIndex(i, j, k), &fcbData[k], part, bitVector, kernelFS, FLICluster[i][j]);
 					}
 					else {
 						leftoverFreeFileSlots.push(FCBIndex(i, j, k));
@@ -109,7 +116,7 @@ FCB * RootDirMemoryHandler::createNewFile(std::string& fpath) {
 		memcpy(fcbData[ind.ridc].ext, ext.c_str(), FEXTLEN);
 		fcbData[ind.ridc].fileSize = 0;
 		fcbData[ind.ridc].firstIndexClusterNo = 0;
-		FCB* fcb = new FCB(FCB::FCBIndex(ind.sli, ind.dc, ind.ridc), &fcbData[ind.ridc], part, bitVector, kernelFS);
+		FCB* fcb = new FCB(FCB::FCBIndex(ind.sli, ind.dc, ind.ridc), &fcbData[ind.ridc], part, bitVector, kernelFS, FLICluster[ind.sli][ind.dc]);
 		nameToFCBmap[fpath] = fcb;
 		return fcb;
 	}
@@ -119,18 +126,25 @@ FCB * RootDirMemoryHandler::createNewFile(std::string& fpath) {
 
 void RootDirMemoryHandler::deleteFile(std::string& fpath) {
 	auto * fcb = nameToFCBmap[fpath];
+	nameToFCBmap[fpath] = nullptr;
 	fcb->setFCBDataToFree();
 	auto fcbIndex = fcb->getFCBIndex();
 	FLICluster[fcbIndex.secondLvlIndex][fcbIndex.dataClusterIndex].setDirty();
 	leftoverFreeFileSlots.push(FCBIndex(fcbIndex.secondLvlIndex, fcbIndex.dataClusterIndex, fcbIndex.rowInDataCluster));
+	fcb->clearClusters();
+	delete fcb;
 }
 
 void RootDirMemoryHandler::saveToDrive() {
 	FLICluster.saveToDrive();
+	for (auto& elem : nameToFCBmap) {
+		elem.second->saveToDrive();
+	}
 }
 
 void RootDirMemoryHandler::format() {
 	for (auto& elem : nameToFCBmap) {
+		elem.second->clearClusters();
 		delete elem.second; // fcb deallocation (first = string, second = fcb*)
 	}
 	nameToFCBmap.clear();

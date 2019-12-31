@@ -11,6 +11,13 @@ class RootDirMemoryHandler : public MemoryHandler {
 public:
 	RootDirMemoryHandler(BitVector& bitVector, ClusterNo no, Partition * part, KernelFS& kerFS) : MemoryHandler(bitVector, no, part, true), kernelFS(kerFS) {}
 
+	RootDirMemoryHandler(const RootDirMemoryHandler&) = delete;
+	RootDirMemoryHandler(RootDirMemoryHandler&&) = delete;
+	RootDirMemoryHandler& operator=(const RootDirMemoryHandler&) = delete;
+	RootDirMemoryHandler& operator=(RootDirMemoryHandler&&) = delete;
+	
+	~RootDirMemoryHandler();
+
 	std::map<std::string, FCB*>* getNameToFCBMap();
 	FCB * createNewFile(std::string& fpath);
 	void deleteFile(std::string& fpath);

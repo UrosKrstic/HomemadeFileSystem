@@ -2,6 +2,7 @@
 #include "FirstLevelIndexCluster.h"
 #include "PartitionError.h"
 #include "ClusterFullException.h"
+#include "NoFreeClustersException.h"
 
 
 KernelFile::KernelFile(FCB * myFCB, char mode, FirstLevelIndexCluster * fli) {
@@ -12,10 +13,9 @@ KernelFile::KernelFile(FCB * myFCB, char mode, FirstLevelIndexCluster * fli) {
 	fliCluster = fli;
 	if (fli != nullptr) {
 		BytesCnt bytesCnt = 0;
-		for (int i = 0; i < fliCluster->getCurrentSize_32b(); i++) {
-			for (int j = 0; j < (*fliCluster)[i].getCurrentSize_32b(); j++) {
-				byteCntToDataCluster[bytesCnt] = &(*fliCluster)[i][j];
-
+		for (unsigned i = 0; i < fliCluster->getCurrentSize_32b(); i++) {
+			for (unsigned j = 0; j < (*fliCluster)[i].getCurrentSize_32b(); j++) {
+				byteCntToDataCluster[bytesCnt] = new DataClusterWithReferenceBit(&(*fliCluster)[i][j]);
 				bytesCnt += ClusterSize;
 			}
 		}
@@ -35,6 +35,11 @@ KernelFile::~KernelFile() {
 		myFCB->currentMode = FCB::idle;
 		WakeAllConditionVariable(&myFCB->readCond);
 		WakeConditionVariable(&myFCB->writeCond);
+		fliCluster->saveToDrive();
+		myFCB->fcbData->fileSize = currentSize;
+		myFCB->fliCluster = fliCluster;
+		myFCB->myDC.setDirty();
+
 	}
 	//SAVE SHIT GOD DAAAAMN TODO: DO IT M8
 }
@@ -43,13 +48,18 @@ KernelFile::~KernelFile() {
 char KernelFile::write(BytesCnt cnt, char * buffer) {
 	if (mode == 'r' || cnt + currentPos > FirstLevelIndexCluster::getMaxFileSize()) return 0;
 	if (fliCluster == nullptr) {
+		BytesCnt cNo = 0;
 		try {
-			auto cNo = myFCB->bitVector.getFreeClusterNumberForUse();
+			cNo = myFCB->bitVector.getFreeClusterNumberForUse();
 			if (cNo == 0) return 0;
 			fliCluster = new FirstLevelIndexCluster(cNo, myFCB->part, false, false);
 			fliCluster->initDataWithZeros();
+			myFCB->fcbData->firstIndexClusterNo = cNo;
+			myFCB->myDC.setDirty();
 		}
 		catch(PartitionError&) {
+			std::vector<unsigned long> v = { cNo };
+			myFCB->bitVector.freeUpClusters(v);
 			return 0;
 		}
 	}
@@ -57,41 +67,31 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 	auto buffSize = cnt;
 	BytesCnt start = 0;
 	while (cnt > 0) {
-		BytesCnt dataClusterStartByte = currentPos / ClusterSize * ClusterSize;
-		if (byteCntToDataCluster[dataClusterStartByte] == nullptr) {
-			if (fliCluster->getCurrentSize_32b() == 0) {
-				try {
+		try {
+			BytesCnt dataClusterStartByte = currentPos / ClusterSize * ClusterSize;
+			if (byteCntToDataCluster[dataClusterStartByte] == nullptr) {
+				if (fliCluster->getCurrentSize_32b() == 0) {
 					auto cNo = myFCB->bitVector.getFreeClusterNumberForUse();
-					if (cNo == 0) return 0;
-					auto sli = fliCluster->addSecondLevelIndexCluster(cNo);
-					sli.initDataWithZeros();
+					auto& sli = fliCluster->addSecondLevelIndexCluster(cNo);
 					cNo = myFCB->bitVector.getFreeClusterNumberForUse();
-					if (cNo == 0) return 0;
-					byteCntToDataCluster[dataClusterStartByte] = &sli.addDataCluster(cNo);
+					byteCntToDataCluster[dataClusterStartByte] = new DataClusterWithReferenceBit(sli.addCluster(cNo));
 				}
-				catch (PartitionError&) {
-					return 0;
-				}
-			}
-			else {
-				try {
-					auto sli = (*fliCluster)[fliCluster->getCurrentSize_32b() - 1];
+				else {
+					auto& sli = (*fliCluster)[fliCluster->getCurrentSize_32b() - 1];
 					auto cNo = myFCB->bitVector.getFreeClusterNumberForUse();
-					if (cNo == 0) return 0;
 					bool sliFull = false;
 					try {
-						byteCntToDataCluster[dataClusterStartByte] = &sli.addDataCluster(cNo);
+						byteCntToDataCluster[dataClusterStartByte] = new DataClusterWithReferenceBit(sli.addCluster(cNo));
 					}
-					catch(ClusterFullException&) {
+					catch (ClusterFullException&) {
 						sliFull = true;
 					}
 					if (sliFull) {
 						try {
 							fliCluster->addSecondLevelIndexCluster(cNo);
 							cNo = myFCB->bitVector.getFreeClusterNumberForUse();
-							if (cNo == 0) return 0;
-							sli = (*fliCluster)[fliCluster->getCurrentSize_32b() - 1];
-							byteCntToDataCluster[dataClusterStartByte] = &sli.addDataCluster(cNo);
+							auto& s = (*fliCluster)[fliCluster->getCurrentSize_32b() - 1];
+							byteCntToDataCluster[dataClusterStartByte] = new DataClusterWithReferenceBit(s.addCluster(cNo));
 						}
 						catch (ClusterFullException&) {
 							std::vector<unsigned long> v = { cNo };
@@ -100,43 +100,77 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 						}
 					}
 				}
-				catch (PartitionError&) {
-					return 0;
+			}
+
+			auto * dataClusterWithRefBit = byteCntToDataCluster[dataClusterStartByte];
+			dataClusterWithRefBit->isReferenced = true;
+
+			if (cache[dataClusterStartByte] == nullptr) {
+				if (cache.size() >= cacheSize) {
+					for (auto iter = cache.begin(); iter != cache.end(); ++iter) {
+						if (iter->first != dataClusterStartByte) {
+							iter->second->dataCluster->saveToDrive();
+							cache.erase(iter);
+							break;
+						}
+					}
 				}
+				cache[dataClusterStartByte] = dataClusterWithRefBit;
+				dataClusterWithRefBit->dataCluster->loadData();
 			}
-			if (byteCntToDataCluster[dataClusterStartByte] != nullptr) {
-				auto * dataCluster = byteCntToDataCluster[dataClusterStartByte];
-				auto* data = dataCluster->loadData();
-				unsigned int startPos = currentPos % ClusterSize;
-				unsigned int writeSize = min(cnt, ClusterSize - startPos);
-				memcpy(data + startPos, buffer + start, writeSize);
-				start += writeSize;
-				cnt -= writeSize;
-				currentPos += writeSize;
-				if (currentPos > currentSize) currentSize = currentPos;
-			}
+
+			char * data = dataClusterWithRefBit->dataCluster->getData();
+			dataClusterWithRefBit->dataCluster->setDirty();
+			unsigned int startPos = currentPos % ClusterSize;
+			unsigned int writeSize = min(cnt, ClusterSize - startPos);
+			memcpy(data + startPos, buffer + start, writeSize);
+			start += writeSize;
+			cnt -= writeSize;
+			currentPos += writeSize;
+			if (currentPos > currentSize) currentSize = currentPos;
+		}
+		catch(NoFreeClustersException&) {
+			currentPos = oldCurrentPos;
+			//TODO: ADD TRUNCATION TO OLD POSITION
+			return 0;
+		}
+		catch (PartitionError&) {
+			currentPos = oldCurrentPos;
+			//TODO: ADD TRUNCATION TO OLD POSITION
+			return 0;
 		}
 	}
-
-
-	return 1;;
+	return 1;
 }
 
 BytesCnt KernelFile::read(BytesCnt cnt, char * buffer)  {	
 	if (eof() || mode != 'r') return 0;
-
 	auto oldCurrentPos = currentPos;
 	auto buffSize = cnt;
 	BytesCnt start = 0;
 	while (cnt > 0) {
 		BytesCnt dataClusterStartByte = currentPos / ClusterSize * ClusterSize;
 		if (byteCntToDataCluster[dataClusterStartByte] != nullptr) {
-			auto * dataCluster = byteCntToDataCluster[dataClusterStartByte];
-			auto* data = dataCluster->loadData();
-			unsigned int startPos = currentPos % ClusterSize;
+			auto * dataClusterWithRefBit = byteCntToDataCluster[dataClusterStartByte];
+			dataClusterWithRefBit->isReferenced = true;
+
+			if (cache[dataClusterStartByte] == nullptr) {
+				if (cache.size() >= cacheSize) {
+					for (auto iter = cache.begin(); iter != cache.end(); ++iter) {
+						if (iter->first != dataClusterStartByte) {
+							iter->second->dataCluster->saveToDrive();
+							cache.erase(iter);
+							break;
+						}
+					}
+				}
+				cache[dataClusterStartByte] = dataClusterWithRefBit;
+			}
+			char * data = dataClusterWithRefBit->dataCluster->loadData();
+			unsigned int startPos = currentPos % ClusterSize; 
 			unsigned int writeSize = min(cnt, ClusterSize - startPos);
-			if (dataClusterStartByte == currentSize / ClusterSize * ClusterSize) writeSize = min(writeSize, currentSize / ClusterSize * ClusterSize - startPos);
-			memcpy(data + startPos, buffer + start, writeSize);
+			if (dataClusterStartByte == currentSize / ClusterSize * ClusterSize) writeSize = min(writeSize, currentSize % ClusterSize - startPos);
+			memcpy(buffer + start, data + startPos, writeSize);
 			start += writeSize;
 			cnt -= writeSize;
 			currentPos += writeSize;
@@ -159,8 +193,23 @@ char KernelFile::seek(BytesCnt newPos) {
 }
 
 
-char KernelFile::truncate()
-{
+char KernelFile::truncate() {
+	int dcIndex = currentPos / ClusterSize;
+	int sliIndex = dcIndex / 512;
+	dcIndex = dcIndex % 512;
+	dcIndex++;
+	if (dcIndex == 512) {
+		dcIndex = 0;
+		sliIndex++;
+	}
+	std::vector<ClusterNo> cNoVec;
+	auto& sliClusters = fliCluster->getSecondLevelIndexClusters();
+	for (auto iter  = sliClusters.begin() + dcIndex; iter < sliClusters.end(); ++iter) {
+		
+	}
+
+
+
 	return 0;
 }
 

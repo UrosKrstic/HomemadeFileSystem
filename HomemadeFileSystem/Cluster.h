@@ -12,6 +12,8 @@ protected:
 	Partition * part;
 public:
 	Cluster(ClusterNo clusterNumber, Partition * part, bool loadClusterData = true);
+	~Cluster() { delete[] data; }
+	ClusterNo getClusterNumber() { return clusterNumber; }
 	void initDataWithZeros();
 	char* loadData();
 	char* getData() { return data; }

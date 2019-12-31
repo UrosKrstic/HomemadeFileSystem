@@ -4,6 +4,7 @@
 #include "FCB.h"
 #include "RootDirMemoryHandler.h"
 #include "PartitionError.h"
+#include "NoFreeClustersException.h"
 
 
 INIT_ONCE kernel_fs::initOnceVariable = INIT_ONCE_STATIC_INIT;
@@ -84,14 +85,22 @@ File * KernelFS::open(char * fname, char mode) {
 			}
 			else {
 				FCB* fcb = (*fileNameToFCBmap)[fpath];
-				if (mode == 'w' || mode == 'r' || mode == 'a') {
+				if (mode == 'r' || mode == 'a') {
+					return fcb->createFileInstance(mode);
+				}
+				else if (mode == 'w') {
+					fcb->clearClusters();
 					return fcb->createFileInstance(mode);
 				}
 			}
 			return nullptr;
 		}
-		catch(PartitionError& pe) {
-			std::cout << "Opening of file failed: " << fname  << " " << pe.what() << std::endl;
+		catch(NoFreeClustersException& e) {
+			std::cout << "No free clusters for opening files: " << e.what() << std::endl;
+			return nullptr;
+		}
+		catch(PartitionError& e) {
+			std::cout << "Opening of file failed: " << fname  << " " << e.what() << std::endl;
 			return nullptr;
 		}
 	}

@@ -20,18 +20,6 @@ class FCB;
 class RootDirMemoryHandler;
 
 class KernelFS {
-private:
-	static bool partitionMounted;
-	static ClusterNo bitVectorClusterNo;
-	static ClusterNo rootDirFirstLevelIndexClusterNo;
-	
-	Partition * partition = nullptr;
-	BitVector * bitVector = nullptr;
-	RootDirMemoryHandler * rootDirMemoryHandler = nullptr;
-	unsigned n = 100;
-	std::map<std::string, FCB*>* fileNameToFCBmap = nullptr;
-	bool formatingInProgress = false;
-	unsigned fileCount = 0, openFileCount = 0;
 
 public:
 	KernelFS()=default;
@@ -48,9 +36,21 @@ public:
 	void setFormatingInProgress(bool value) { formatingInProgress = value; }
 	int getFileCount() const { return fileCount; }
 
-	
-
 	static bool isPartitionMounted() { return partitionMounted; }
+
+private:
+	static bool partitionMounted;
+	static ClusterNo bitVectorClusterNo;
+	static ClusterNo rootDirFirstLevelIndexClusterNo;
+
+	Partition * partition = nullptr;
+	BitVector * bitVector = nullptr;
+	RootDirMemoryHandler * rootDirMemoryHandler = nullptr;
+	unsigned n = 100;
+	std::map<std::string, FCB*>* fileNameToFCBmap = nullptr;
+	bool formatingInProgress = false;
+	unsigned fileCount = 0, openFileCount = 0;
+
 };
 
 #endif //_KERNEL_FS_H_

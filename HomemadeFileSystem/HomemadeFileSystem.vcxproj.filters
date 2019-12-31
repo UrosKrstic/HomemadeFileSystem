@@ -63,6 +63,9 @@
     <ClInclude Include="ClusterFullException.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="NoFreeClustersException.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="notes.txt">

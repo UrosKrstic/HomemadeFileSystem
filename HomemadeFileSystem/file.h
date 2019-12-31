@@ -8,9 +8,9 @@ class File {
 public:
 	//zatvaranje fajla
 	~File();
-	char write(BytesCnt, char *buffer);
-	BytesCnt read(BytesCnt, char * buffer);
-	char seek(BytesCnt);
+	char write(BytesCnt cnt, char *buffer);
+	BytesCnt read(BytesCnt cnt, char * buffer);
+	char seek(BytesCnt cnt);
 	BytesCnt filePos();
 	char eof();
 	BytesCnt getFileSize();
@@ -19,7 +19,7 @@ private:
 	friend class FS;
 	friend class KernelFS;
 	friend class FCB;
-	File(); //objekat fajla se moze kreirati samo otvaranjem
+	File()=default; //objekat fajla se moze kreirati samo otvaranjem
 	KernelFile *myImpl;
 
 };

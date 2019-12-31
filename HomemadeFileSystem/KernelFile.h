@@ -7,6 +7,12 @@
 class KernelFile {
 public:
 	KernelFile(FCB * myFCB, char mode, FirstLevelIndexCluster * fli);
+
+	KernelFile(const KernelFile&) = delete;
+	KernelFile(KernelFile&&) = delete;
+	KernelFile& operator=(const KernelFile&) = delete;
+	KernelFile& operator=(KernelFile&&) = delete;
+
 	~KernelFile();
 	char write(BytesCnt cnt, char *buffer);
 	BytesCnt read(BytesCnt cnt, char * buffer);
@@ -20,18 +26,21 @@ public:
 	
 private:
 
-	struct dataClusterWithReferenceBit {
+	typedef struct DataClusterWithReferenceBitStruct {
 		DataCluster *dataCluster;
 		bool isReferenced;
-	};
+		DataClusterWithReferenceBitStruct(DataCluster* dc, bool ref = false) : dataCluster(dc), isReferenced(ref) {}
+	} DataClusterWithReferenceBit;
 
 	FCB * myFCB;
 	char mode;
 	unsigned int currentSize;
 	unsigned int currentPos;
 	FirstLevelIndexCluster* fliCluster;
-	std::map<BytesCnt, DataCluster*> byteCntToDataCluster;
-	std::queue<dataClusterWithReferenceBit> SecondChanceCache;
+	std::map<BytesCnt, DataClusterWithReferenceBit*> byteCntToDataCluster;
+	std::map<BytesCnt, DataClusterWithReferenceBit*> cache;
+
+	static constexpr int cacheSize = 512;
 
 };
 

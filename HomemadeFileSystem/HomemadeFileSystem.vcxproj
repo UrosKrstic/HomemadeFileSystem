@@ -132,6 +132,7 @@
     <ClInclude Include="KernelFile.h" />
     <ClInclude Include="KernelFS.h" />
     <ClInclude Include="MemoryHandler.h" />
+    <ClInclude Include="NoFreeClustersException.h" />
     <ClInclude Include="part.h" />
     <ClInclude Include="PartitionError.h" />
     <ClInclude Include="RootDirMemoryHandler.h" />

@@ -5,12 +5,12 @@
 #include "file.h"
 
 
-FCB::FCB(FCBIndex& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS) : fcbIndex(fcbInd), fcbData(data), part(p), bitVector(bitV), kernelFS(kerFS) {
+FCB::FCB(FCBIndex& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, DataCluster& dc) : fcbIndex(fcbInd), fcbData(data), part(p), bitVector(bitV), kernelFS(kerFS), myDC(dc) {
 	InitializeCriticalSection(&criticalSection);
 	InitializeConditionVariable(&readCond);
 	InitializeConditionVariable(&writeCond);
 }
-FCB::FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS) : fcbIndex(fcbInd), fcbData(data), part(p), bitVector(bitV), kernelFS(kerFS) {
+FCB::FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, DataCluster& dc) : fcbIndex(fcbInd), fcbData(data), part(p), bitVector(bitV), kernelFS(kerFS), myDC(dc) {
 	InitializeCriticalSection(&criticalSection);
 	InitializeConditionVariable(&readCond);
 	InitializeConditionVariable(&writeCond);
@@ -18,7 +18,11 @@ FCB::FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, Kern
 
 FCB::~FCB() {
 	DeleteCriticalSection(&criticalSection);
+	if (fliCluster != nullptr) {
+		fliCluster->saveToDrive();
+	}
 }
+
 
 File * FCB::createFileInstance(char mode) {
 	EnterCriticalSection(&criticalSection);
@@ -31,7 +35,8 @@ File * FCB::createFileInstance(char mode) {
 		SleepConditionVariableCS(&writeCond, &criticalSection, INFINITE);
 	}
 	try {
-		if (fcbData->firstIndexClusterNo != 0) {
+		if (fcbData->firstIndexClusterNo != 0 && loadFLI) {
+			loadFLI = false;
 			fliCluster = new FirstLevelIndexCluster(fcbData->firstIndexClusterNo, part, false, true);
 			fliCluster->loadSLIClusters();
 		}
@@ -49,15 +54,30 @@ File * FCB::createFileInstance(char mode) {
 	return file;
 }
 
-
-char FCB::write(BytesCnt cnt, char * buffer, unsigned int & currentPosOfFile, unsigned int & currentSizeOfFile) {
-	return 0;
+void FCB::clearClusters() {
+	std::vector<BytesCnt> cNoVector;
+	if (fliCluster == nullptr && fcbData->firstIndexClusterNo != 0) {
+		fliCluster = new FirstLevelIndexCluster(fcbData->firstIndexClusterNo, part, false, true);
+		fliCluster->loadSLIClusters();
+	}
+	if (fliCluster != nullptr) {
+		cNoVector.push_back(fliCluster->getClusterNumber());
+		for (unsigned i = 0; i < fliCluster->getCurrentSize_32b(); i++) {
+			cNoVector.push_back((*fliCluster)[i].getClusterNumber());
+			for (unsigned j = 0; j < (*fliCluster)[i].getCurrentSize_32b(); j++) {
+				cNoVector.push_back((*fliCluster)[i][j].getClusterNumber());
+			}
+		}
+		bitVector.freeUpClusters(cNoVector);
+		delete fliCluster;
+		fcbData->firstIndexClusterNo = 0;
+		fcbData->fileSize = 0;
+		myDC.setDirty();
+		fliCluster = nullptr;
+	}
 }
 
-BytesCnt FCB::read(BytesCnt cnt, char * buffer, unsigned int & currentPosOfFile) {
-	return 0;
+void FCB::saveToDrive() {
+	if (fliCluster != nullptr) fliCluster->saveToDrive();
 }
 
-char FCB::truncate(unsigned int & currentPosOfFile, unsigned int & currentSizeOfFile) {
-	return 0;
-}

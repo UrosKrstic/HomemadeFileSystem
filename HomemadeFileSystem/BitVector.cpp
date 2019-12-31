@@ -1,5 +1,6 @@
 #include "BitVector.h"
 #include <iostream>
+#include "NoFreeClustersException.h"
 
 
 BitVector::BitVector(ClusterNo clusterNumber, Partition * part) : Cluster(clusterNumber, part) {
@@ -33,7 +34,7 @@ ClusterNo BitVector::getFreeClusterNumberForUse() {
 		}
 		bitMask >>= 1;
 	}
-	return 0;
+	throw NoFreeClustersException();
 }
 
 void BitVector::freeUpClusters(std::vector<ClusterNo>& clusterVector) {

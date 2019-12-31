@@ -1,6 +1,7 @@
 #ifndef _FCB_H_
 #define _FCB_H_
 #include "KernelFS.h"
+#include "DataCluster.h"
 
 struct FCBData;
 class KernelFile;
@@ -19,20 +20,9 @@ public:
 		bool isInvalid = false;
 		FCBIndexStruct() = default;
 		FCBIndexStruct(ClusterNo sli, ClusterNo dci, ClusterNo ridc) : secondLvlIndex(sli), dataClusterIndex(dci), rowInDataCluster(ridc) {}
-		FCBIndexStruct(const FCBIndexStruct& fcbi) : secondLvlIndex(fcbi.secondLvlIndex), dataClusterIndex(fcbi.dataClusterIndex), rowInDataCluster(fcbi.rowInDataCluster) {}
-		void setIndices(ClusterNo sli, ClusterNo dci, ClusterNo ridc, bool isInvalid = false) { secondLvlIndex = sli; dataClusterIndex = dci;  rowInDataCluster = ridc; }//goToNextIndex(); }
-		/*void goToNextIndex() {
-			rowInDataCluster++;
-			if (rowInDataCluster >= rowsInCluster) {
-				rowInDataCluster = 0;
-				dataClusterIndex++;
-			}
-			if (dataClusterIndex >= ClusterSize / 4) {
-				dataClusterIndex = 0;
-				secondLvlIndex++;
-			}
-			if (secondLvlIndex == ClusterSize / 4) isInvalid = true;
-		}*/
+		void setIndices(ClusterNo sli, ClusterNo dci, ClusterNo ridc, bool isInvalid = false) {
+			secondLvlIndex = sli; dataClusterIndex = dci;  rowInDataCluster = ridc;
+		}
 	} FCBIndex;
 
 	typedef struct FCBDataStruct {
@@ -52,14 +42,20 @@ public:
 			return name[0] == 0;
 		}
 	} FCBData;
+
 	friend class KernelFile;
-	FCB(FCBIndex& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS);
-	FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS);
+	FCB(FCBIndex& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, DataCluster& dc);
+	FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, DataCluster& dc);
+
+	FCB(const FCB&) = delete;
+	FCB(FCB&&) = delete;
+	FCB& operator=(const FCB&) = delete;
+	FCB& operator=(FCB&&) = delete;
+
 	~FCB();
 	File * createFileInstance(char mode);
-	char write(BytesCnt cnt, char *buffer, unsigned int& currentPosOfFile, unsigned int & currentSizeOfFile);
-	BytesCnt read(BytesCnt cnt, char *buffer, unsigned int& currentPosOfFile);
-	char truncate(unsigned int& currentPosOfFile, unsigned int& currentSizeOfFile);
+	void clearClusters();
+	void saveToDrive();
 	void setFCBDataToFree() { fcbData->name[0] = 0; }
 	FCBIndex getFCBIndex() { return fcbIndex; }
 private:
@@ -68,6 +64,7 @@ private:
 	CRITICAL_SECTION criticalSection;
 	CONDITION_VARIABLE readCond, writeCond;
 	int readCount = 0;
+	bool loadFLI = true;
 	Mode currentMode = idle;
 	
 	FCBIndex fcbIndex;
@@ -75,7 +72,8 @@ private:
 	Partition * part;
 	BitVector &bitVector;
 	KernelFS &kernelFS;
-	FirstLevelIndexCluster * fliCluster;
+	DataCluster& myDC;
+	FirstLevelIndexCluster * fliCluster = nullptr;
 	
 	static constexpr unsigned numOfFreeBytes = 12;
 	static constexpr  unsigned rowsInCluster = ClusterSize / sizeof(FCBData);

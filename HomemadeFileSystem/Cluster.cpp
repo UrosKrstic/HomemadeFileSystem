@@ -19,17 +19,20 @@ void Cluster::initDataWithZeros() {
 }
 
 char * Cluster::loadData() {
-	if (data == nullptr) data = new char[ClusterSize];
-	auto ret = part->readCluster(clusterNumber, data);
-	if (ret == 0) throw PartitionError();
-	dirty = false;
+	if (data == nullptr) {
+		data = new char[ClusterSize];
+		auto ret = part->readCluster(clusterNumber, data);
+		if (ret == 0) throw PartitionError();
+		dirty = false;
+	}
 	return data;
 }
 
 void Cluster::saveToDrive() {
-	if (dirty) {
+	if (dirty && data != nullptr) {
 		auto ret = part->writeCluster(clusterNumber, data);
 		if (ret == 0) throw PartitionError();
+		delete[] data;
+		data = nullptr;
 	}
-	delete data;
 }

@@ -1,36 +1,34 @@
 #include "file.h"
+#include "KernelFile.h"
 
-char File::write(BytesCnt, char * buffer)
-{
-	return 0;
+File::~File() {
+	delete myImpl;
 }
 
-BytesCnt File::read(BytesCnt, char * buffer)
-{
-	return BytesCnt();
+char File::write(BytesCnt  cnt, char * buffer) {
+	return myImpl->write(cnt, buffer);
 }
 
-char File::seek(BytesCnt)
-{
-	return 0;
+BytesCnt File::read(BytesCnt  cnt, char * buffer) {
+	return myImpl->read(cnt, buffer);
 }
 
-BytesCnt File::filePos()
-{
-	return BytesCnt();
+char File::seek(BytesCnt cnt) {
+	return myImpl->seek(cnt);
 }
 
-char File::eof()
-{
-	return 0;
+BytesCnt File::filePos() {
+	return myImpl->filePos();
 }
 
-BytesCnt File::getFileSize()
-{
-	return BytesCnt();
+char File::eof() {
+	return myImpl->eof();
 }
 
-char File::truncate()
-{
-	return 0;
+BytesCnt File::getFileSize() {
+	return myImpl->getFileSize();
+}
+
+char File::truncate() {
+	return myImpl->truncate();
 }
