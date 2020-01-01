@@ -124,9 +124,10 @@ FCB * RootDirMemoryHandler::createNewFile(std::string& fpath) {
 	
 }
 
-void RootDirMemoryHandler::deleteFile(std::string& fpath) {
+int RootDirMemoryHandler::deleteFile(std::string& fpath) {
 	if (nameToFCBmap.find(fpath) != nameToFCBmap.end()) {
 		auto * fcb = nameToFCBmap[fpath];
+		if (fcb->getNumberOfOpenFiles() > 0) return 0;
 		nameToFCBmap.erase(fpath);
 		fcb->setFCBDataToFree();
 		auto fcbIndex = fcb->getFCBIndex();
@@ -134,7 +135,9 @@ void RootDirMemoryHandler::deleteFile(std::string& fpath) {
 		leftoverFreeFileSlots.push(FCBIndex(fcbIndex.secondLvlIndex, fcbIndex.dataClusterIndex, fcbIndex.rowInDataCluster));
 		fcb->clearClusters();
 		delete fcb;
+		return 1;
 	}
+	return 0;
 }
 
 void RootDirMemoryHandler::saveToDrive() {

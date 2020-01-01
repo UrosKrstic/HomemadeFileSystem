@@ -3,8 +3,13 @@
 #include "fs.h"
 #include "part.h"
 #include "file.h"
-
 using namespace std;
+
+
+HANDLE nit1, nit2, nit3;
+DWORD ThreadID;
+
+auto * partition = new Partition(const_cast<char *>("p1.ini"));
 
 char * str_creator(int size, char fill) {
 	char * buffer = new char[size];
@@ -12,69 +17,47 @@ char * str_creator(int size, char fill) {
 	return buffer;
 }
 
-void func1() {
-	char * fpath = const_cast<char*>("/fajl1.txt");
+DWORD WINAPI reader() {
+	
 
-	File* file = FS::open(fpath, 'a');
-
-	char * buffer = str_creator(4000, 'c');
-	file->write(4000, buffer);
-
-	file->seek(2100);
-
-	delete[] buffer;
-	buffer = str_creator(20, 'd');
-	file->write(20, buffer);
-
-	delete file;
-
-	file = FS::open(fpath, 'r');
-
-	delete[] buffer;
-	buffer = str_creator(10, 'b');
-
-	file->read(10, buffer);
-
+	char * buffer = new char[5];
+	unsigned cnt = 0;
+	File * file = nullptr;
+	do {
+		file = FS::open(const_cast<char*>("/fajl.txt"), 'r');
+	} while (file == nullptr);
+	file->read(5, buffer);
+	cout << "Citalac procitao:\n";
 	cout << buffer << endl;
-
 	delete[] buffer;
+	delete file;
+	Sleep(5000);
+	return 0;
 }
 
-void func2() {
-	char * fpath = const_cast<char*>("/fajl1.txt");
-	File* file = FS::open(fpath, 'a');
-	int size = 510 * 2048;
-	char* buffer = str_creator(size, 'f');
-	file->write(size, buffer);
-	delete file;
+DWORD WINAPI writer() {
+	File * file = FS::open(const_cast<char*>("/fajl.txt"), 'w');
+
+	char * buffer = str_creator(5, 'a');
+
+	file->write(5, buffer);
+	cout << "Pisac upisao podatke\n";
 	delete[] buffer;
-}
-
-void func3() {
-	char * fpath = const_cast<char*>("/fajl1.txt");
-	File* file = FS::open(fpath, 'a');
-
-	file->seek(file->getFileSize() - 5000);
-	file->truncate();
-
-
+	Sleep(5000);
 	delete file;
-}
-
-void func4() {
-	FS::deleteFile(const_cast<char*>("/fajl1.txt"));
-	if (FS::doesExist(const_cast<char*>("/fajl1.txt"))) cout << "NO" << endl;
+	return 0;
 }
 
 
 int main(int argc, char* argv[]) {
-	auto * partition = new Partition(const_cast<char *>("p1.ini"));
-
 	FS::mount(partition);
-
-	func4();
-
+	nit1 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)reader, NULL, 0, &ThreadID);
+	nit3 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)reader, NULL, 0, &ThreadID);
+	nit2 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)writer, NULL, 0, &ThreadID);
+	HANDLE lpHandles[3] = { nit1, nit2, nit3 };
+	WaitForMultipleObjects(3, lpHandles, TRUE, INFINITE);
+	CloseHandle(nit1);
+	CloseHandle(nit2);
 	FS::unmount();
-
 	delete partition;
 }

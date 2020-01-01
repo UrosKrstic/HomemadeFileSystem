@@ -111,7 +111,6 @@ char KernelFS::deleteFile(char * fname) {
 	std::string fpath(fname);
 	std::cmatch m;
 	if (!std::regex_match(fpath.c_str(), m, reg)) return 0;
-	rootDirMemoryHandler->deleteFile(fpath);
-	return 0;
+	return rootDirMemoryHandler->deleteFile(fpath);
 }
 

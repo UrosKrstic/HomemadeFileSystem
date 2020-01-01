@@ -58,6 +58,7 @@ public:
 	void saveToDrive();
 	void setFCBDataToFree() { fcbData->name[0] = 0; }
 	FCBIndex getFCBIndex() { return fcbIndex; }
+	unsigned getNumberOfOpenFiles() { return numberOfOpenFiles; }
 private:
 	unsigned numberOfOpenFiles = 0;
 

@@ -48,6 +48,7 @@ File * FCB::createFileInstance(char mode) {
 		auto * kernelFile = new KernelFile(this, mode, fliCluster);
 		file = new File();
 		file->myImpl = kernelFile;
+		numberOfOpenFiles++;
 	}
 	catch(PartitionError&) {}
 	LeaveCriticalSection(&criticalSection);

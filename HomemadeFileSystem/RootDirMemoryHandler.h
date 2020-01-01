@@ -20,7 +20,7 @@ public:
 
 	std::map<std::string, FCB*>* getNameToFCBMap();
 	FCB * createNewFile(std::string& fpath);
-	void deleteFile(std::string& fpath);
+	int deleteFile(std::string& fpath);
 	void saveToDrive();
 	void format();
 

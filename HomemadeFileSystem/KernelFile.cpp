@@ -23,6 +23,7 @@ KernelFile::KernelFile(FCB * myFCB, char mode, FirstLevelIndexCluster * fli) {
 }
 
 KernelFile::~KernelFile() {
+	myFCB->numberOfOpenFiles--;
 	if (mode == 'r') {
 		myFCB->readCount--;
 		if (myFCB->readCount == 0) {
