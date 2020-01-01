@@ -125,14 +125,16 @@ FCB * RootDirMemoryHandler::createNewFile(std::string& fpath) {
 }
 
 void RootDirMemoryHandler::deleteFile(std::string& fpath) {
-	auto * fcb = nameToFCBmap[fpath];
-	nameToFCBmap[fpath] = nullptr;
-	fcb->setFCBDataToFree();
-	auto fcbIndex = fcb->getFCBIndex();
-	FLICluster[fcbIndex.secondLvlIndex][fcbIndex.dataClusterIndex].setDirty();
-	leftoverFreeFileSlots.push(FCBIndex(fcbIndex.secondLvlIndex, fcbIndex.dataClusterIndex, fcbIndex.rowInDataCluster));
-	fcb->clearClusters();
-	delete fcb;
+	if (nameToFCBmap.find(fpath) != nameToFCBmap.end()) {
+		auto * fcb = nameToFCBmap[fpath];
+		nameToFCBmap.erase(fpath);
+		fcb->setFCBDataToFree();
+		auto fcbIndex = fcb->getFCBIndex();
+		FLICluster[fcbIndex.secondLvlIndex][fcbIndex.dataClusterIndex].setDirty();
+		leftoverFreeFileSlots.push(FCBIndex(fcbIndex.secondLvlIndex, fcbIndex.dataClusterIndex, fcbIndex.rowInDataCluster));
+		fcb->clearClusters();
+		delete fcb;
+	}
 }
 
 void RootDirMemoryHandler::saveToDrive() {

@@ -55,7 +55,7 @@ void SecondLevelIndexCluster::saveToDrive() {
 void SecondLevelIndexCluster::refreshIndexData() {
 	dirty = true;
 	currentSize = dataClusters.size();
-	memset(data + dataClusters.size(), 0, ClusterSize - dataClusters.size() * 4); 
+	memset(data + dataClusters.size() * 4, 0, ClusterSize - dataClusters.size() * 4); 
 }
 
 void SecondLevelIndexCluster::unSetDirtyForAllDataClusters() {

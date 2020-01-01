@@ -56,25 +56,30 @@ File * FCB::createFileInstance(char mode) {
 
 void FCB::clearClusters() {
 	std::vector<BytesCnt> cNoVector;
-	if (fliCluster == nullptr && fcbData->firstIndexClusterNo != 0) {
-		fliCluster = new FirstLevelIndexCluster(fcbData->firstIndexClusterNo, part, false, true);
-		fliCluster->loadSLIClusters();
-	}
-	if (fliCluster != nullptr) {
-		cNoVector.push_back(fliCluster->getClusterNumber());
-		for (unsigned i = 0; i < fliCluster->getCurrentSize_32b(); i++) {
-			cNoVector.push_back((*fliCluster)[i].getClusterNumber());
-			for (unsigned j = 0; j < (*fliCluster)[i].getCurrentSize_32b(); j++) {
-				cNoVector.push_back((*fliCluster)[i][j].getClusterNumber());
-			}
+	try {
+		if (fliCluster == nullptr && fcbData->firstIndexClusterNo != 0) {
+			fliCluster = new FirstLevelIndexCluster(fcbData->firstIndexClusterNo, part, false, true);
+			fliCluster->loadSLIClusters();
 		}
-		bitVector.freeUpClusters(cNoVector);
-		delete fliCluster;
-		fcbData->firstIndexClusterNo = 0;
-		fcbData->fileSize = 0;
-		myDC.setDirty();
-		fliCluster = nullptr;
+		if (fliCluster != nullptr) {
+			cNoVector.push_back(fliCluster->getClusterNumber());
+			for (unsigned i = 0; i < fliCluster->getCurrentSize_32b(); i++) {
+				cNoVector.push_back((*fliCluster)[i].getClusterNumber());
+				for (unsigned j = 0; j < (*fliCluster)[i].getCurrentSize_32b(); j++) {
+					cNoVector.push_back((*fliCluster)[i][j].getClusterNumber());
+				}
+				(*fliCluster)[i].getDataClusters().clear();
+			}
+			fliCluster->getSecondLevelIndexClusters().clear();
+			bitVector.freeUpClusters(cNoVector);
+			delete fliCluster;
+			fcbData->firstIndexClusterNo = 0;
+			fcbData->fileSize = 0;
+			myDC.setDirty();
+			fliCluster = nullptr;
+		}
 	}
+	catch(PartitionError&) {}
 }
 
 void FCB::saveToDrive() {

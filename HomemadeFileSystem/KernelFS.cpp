@@ -49,7 +49,6 @@ char KernelFS::unmount() {
 		rootDirMemoryHandler->saveToDrive();
 		delete bitVector;
 		delete rootDirMemoryHandler;
-		std::cout << "Budi niti na mount cond\n";
 		WakeAllConditionVariable(&kernel_fs::isMountedCond);
 		return 1;
 	}
@@ -66,7 +65,7 @@ char KernelFS::format() {
 }
 
 char KernelFS::doesExist(std::string& fname) {
-	return (*fileNameToFCBmap)[fname] != nullptr;
+	return fileNameToFCBmap->find(fname) != fileNameToFCBmap->end();
 }
 
 File * KernelFS::open(char * fname, char mode) {
@@ -76,7 +75,7 @@ File * KernelFS::open(char * fname, char mode) {
 			std::string fpath(fname);
 			std::cmatch m;
 			if (!std::regex_match(fpath.c_str(), m, reg)) { std::cout << "Nije prosao regex\n"; return nullptr; }
-			if ((*fileNameToFCBmap)[fpath] == nullptr) {
+			if (fileNameToFCBmap->find(fname) == fileNameToFCBmap->end()) {
 				if (mode == 'w') {
 					FCB* fcb = rootDirMemoryHandler->createNewFile(fpath);
 					if (fcb == nullptr) return nullptr;
@@ -113,9 +112,6 @@ char KernelFS::deleteFile(char * fname) {
 	std::cmatch m;
 	if (!std::regex_match(fpath.c_str(), m, reg)) return 0;
 	rootDirMemoryHandler->deleteFile(fpath);
-	FCB * fcb = (*fileNameToFCBmap)[fpath];
-	(*fileNameToFCBmap)[fpath] = nullptr;
-	delete fcb;
 	return 0;
 }
 

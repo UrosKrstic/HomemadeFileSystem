@@ -206,20 +206,17 @@ char KernelFile::truncate() {
 		auto& dataClusters = sliClusters[i]->getDataClusters();
 		for (unsigned j = 0; j < dataClusters.size(); j++) {  // NOLINT
 			cNoVec.push_back(dataClusters[j]->getClusterNumber());
-			delete dataClusters[j];
 		}
 		delete sliClusters[i];
 	}
 	sliClusters.erase(sliClusters.begin() + fullSLIStart, sliClusters.end());
-	fliCluster->refreshIndexData();
 
 	auto& dataClusters = sliClusters[sliIndex]->getDataClusters();
 	for (unsigned i = dcIndex + 1; i < dataClusters.size(); i++) {
 		cNoVec.push_back(dataClusters[i]->getClusterNumber());
 		delete dataClusters[i];
 	}
-	if (dcIndex + 1 < 512)
-		dataClusters.erase(dataClusters.begin() + dcIndex + 1, dataClusters.end());
+	dataClusters.erase(dataClusters.begin() + dcIndex + 1, dataClusters.end()); 
 
 	if (currentPos % ClusterSize == 0) {
 		cNoVec.push_back(dataClusters[dcIndex]->getClusterNumber());
@@ -244,6 +241,7 @@ char KernelFile::truncate() {
 	else {
 		fliCluster->refreshIndexData();
 	}
+	myFCB->bitVector.freeUpClusters(cNoVec);
 	currentSize = currentPos;
 	myFCB->fcbData->fileSize = currentSize;
 	myFCB->myDC.setDirty();

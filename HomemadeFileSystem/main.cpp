@@ -4,6 +4,8 @@
 #include "part.h"
 #include "file.h"
 
+using namespace std;
+
 char * str_creator(int size, char fill) {
 	char * buffer = new char[size];
 	for (int i = 0; i < size; i++) buffer[i] = fill;
@@ -32,6 +34,9 @@ void func1() {
 	buffer = str_creator(10, 'b');
 
 	file->read(10, buffer);
+
+	cout << buffer << endl;
+
 	delete[] buffer;
 }
 
@@ -45,18 +50,31 @@ void func2() {
 	delete[] buffer;
 }
 
+void func3() {
+	char * fpath = const_cast<char*>("/fajl1.txt");
+	File* file = FS::open(fpath, 'a');
+
+	file->seek(file->getFileSize() - 5000);
+	file->truncate();
+
+
+	delete file;
+}
+
+void func4() {
+	FS::deleteFile(const_cast<char*>("/fajl1.txt"));
+	if (FS::doesExist(const_cast<char*>("/fajl1.txt"))) cout << "NO" << endl;
+}
+
 
 int main(int argc, char* argv[]) {
-	try {
-		auto * partition = new Partition(const_cast<char *>("p1.ini"));
+	auto * partition = new Partition(const_cast<char *>("p1.ini"));
 
-		FS::mount(partition);
+	FS::mount(partition);
 
-		func2();
+	func4();
 
-		FS::unmount();
+	FS::unmount();
 
-		delete partition;
-	}
-	catch(std::exception&) {}
+	delete partition;
 }
