@@ -2,7 +2,6 @@
 #define _KERNELFILE_H_
 #include "FCB.h"
 #include "DataCluster.h"
-#include <queue>
 
 class KernelFile {
 public:
@@ -18,9 +17,7 @@ public:
 	BytesCnt read(BytesCnt cnt, char * buffer);
 	char seek(BytesCnt newPos);
 	BytesCnt filePos() { return currentPos; }
-	char eof() {
-		return currentPos < currentSize ? 0 : 2;
-	}
+	char eof();
 	BytesCnt getFileSize() { return currentSize; }
 	char truncate();
 	
@@ -28,9 +25,11 @@ private:
 
 	typedef struct DataClusterWithReferenceBitStruct {
 		DataCluster *dataCluster;
-		bool isReferenced;
-		DataClusterWithReferenceBitStruct(DataCluster* dc, bool ref = false) : dataCluster(dc), isReferenced(ref) {}
+		int referenceCount = 0;
+		DataClusterWithReferenceBitStruct(DataCluster* dc) : dataCluster(dc) {}
 	} DataClusterWithReferenceBit;
+
+	char * getDataFromCacheAndUpdateCache(BytesCnt dataClusterStartByte);
 
 	FCB * myFCB;
 	char mode;

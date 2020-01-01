@@ -44,6 +44,29 @@ KernelFile::~KernelFile() {
 	}
 }
 
+char * KernelFile::getDataFromCacheAndUpdateCache(BytesCnt dataClusterStartByte) {
+	if (cache.find(dataClusterStartByte) == cache.end()) {
+		if (cache.size() >= cacheSize) {
+			auto minIter = cache.begin();
+			if (minIter->first == dataClusterStartByte) ++minIter;
+			int minRef = minIter->second->referenceCount;
+			for (auto iter = cache.begin(); iter != cache.end(); ++iter) {
+				if (minRef == 1) break;
+				if (iter->first != dataClusterStartByte && iter->second->referenceCount < minRef) {
+					minIter = iter;
+					minRef = iter->second->referenceCount;
+				}
+			}
+			minIter->second->dataCluster->saveToDrive();
+			cache.erase(minIter);
+		}
+		cache[dataClusterStartByte] = byteCntToDataCluster[dataClusterStartByte];
+		cache[dataClusterStartByte]->referenceCount = 0;
+		cache[dataClusterStartByte]->dataCluster->loadData();
+	}
+	cache[dataClusterStartByte]->referenceCount++;
+	return cache[dataClusterStartByte]->dataCluster->getData();
+}
 
 char KernelFile::write(BytesCnt cnt, char * buffer) {
 	if (mode == 'r' || cnt + currentPos > FirstLevelIndexCluster::getMaxFileSize()) return 0;
@@ -66,6 +89,7 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 	auto oldCurrentPos = currentPos;
 	auto buffSize = cnt;
 	BytesCnt start = 0;
+	int cao = 0;
 	while (cnt > 0) {
 		try {
 			BytesCnt dataClusterStartByte = currentPos / ClusterSize * ClusterSize;
@@ -101,26 +125,9 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 					}
 				}
 			}
-
-			auto * dataClusterWithRefBit = byteCntToDataCluster[dataClusterStartByte];
-			dataClusterWithRefBit->isReferenced = true;
-
-			if (cache[dataClusterStartByte] == nullptr) {
-				if (cache.size() >= cacheSize) {
-					for (auto iter = cache.begin(); iter != cache.end(); ++iter) {
-						if (iter->first != dataClusterStartByte) {
-							iter->second->dataCluster->saveToDrive();
-							cache.erase(iter);
-							break;
-						}
-					}
-				}
-				cache[dataClusterStartByte] = dataClusterWithRefBit;
-				dataClusterWithRefBit->dataCluster->loadData();
-			}
-
-			char * data = dataClusterWithRefBit->dataCluster->getData();
-			dataClusterWithRefBit->dataCluster->setDirty();
+			cao++;
+			char * data = getDataFromCacheAndUpdateCache(dataClusterStartByte);
+			cache[dataClusterStartByte]->dataCluster->setDirty();
 			unsigned int startPos = currentPos % ClusterSize;
 			unsigned int writeSize = min(cnt, ClusterSize - startPos);
 			memcpy(data + startPos, buffer + start, writeSize);
@@ -151,22 +158,7 @@ BytesCnt KernelFile::read(BytesCnt cnt, char * buffer)  {
 	while (cnt > 0) {
 		BytesCnt dataClusterStartByte = currentPos / ClusterSize * ClusterSize;
 		if (byteCntToDataCluster[dataClusterStartByte] != nullptr) {
-			auto * dataClusterWithRefBit = byteCntToDataCluster[dataClusterStartByte];
-			dataClusterWithRefBit->isReferenced = true;
-
-			if (cache[dataClusterStartByte] == nullptr) {
-				if (cache.size() >= cacheSize) {
-					for (auto iter = cache.begin(); iter != cache.end(); ++iter) {
-						if (iter->first != dataClusterStartByte) {
-							iter->second->dataCluster->saveToDrive();
-							cache.erase(iter);
-							break;
-						}
-					}
-				}
-				cache[dataClusterStartByte] = dataClusterWithRefBit;
-			}
-			char * data = dataClusterWithRefBit->dataCluster->loadData();
+			char * data = getDataFromCacheAndUpdateCache(dataClusterStartByte);
 			unsigned int startPos = currentPos % ClusterSize; 
 			unsigned int writeSize = min(cnt, ClusterSize - startPos);
 			if (dataClusterStartByte == currentSize / ClusterSize * ClusterSize) writeSize = min(writeSize, currentSize % ClusterSize - startPos);
@@ -183,13 +175,17 @@ BytesCnt KernelFile::read(BytesCnt cnt, char * buffer)  {
 
 char KernelFile::seek(BytesCnt newPos) {
 	char returnVal = 0;
-	if (newPos < currentSize) {
+	if (newPos <= currentSize) {
 		currentPos = newPos;
 		return 1;
 	}
 	else {
 		return 0;
 	}
+}
+
+char KernelFile::eof() {
+	return currentPos < currentSize ? 0 : 2;
 }
 
 
@@ -249,3 +245,5 @@ char KernelFile::truncate() {
 
 	return 0;
 }
+
+

@@ -12,6 +12,7 @@ void IndexCluster::saveToDrive() {
 	if (dirty && data != nullptr) {
 		auto ret = part->writeCluster(clusterNumber, data);
 		if (ret == 0) throw PartitionError();
+		dirty = false;
 	}
 }
 

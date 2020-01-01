@@ -34,5 +34,6 @@ void Cluster::saveToDrive() {
 		if (ret == 0) throw PartitionError();
 		delete[] data;
 		data = nullptr;
+		dirty = false;
 	}
 }

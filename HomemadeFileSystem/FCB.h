@@ -62,10 +62,12 @@ public:
 private:
 	unsigned numberOfOpenFiles = 0;
 
-	CRITICAL_SECTION criticalSection;
-	CONDITION_VARIABLE readCond, writeCond;
+	CRITICAL_SECTION criticalSection, blockedThreadCritSection;
+	CONDITION_VARIABLE readCond, writeCond, noBlockedThreads;
 	int readCount = 0;
 	bool loadFLI = true;
+	bool deleted = false;
+	int blockedThreadCount = 0;
 	Mode currentMode = idle;
 	
 	FCBIndex fcbIndex;

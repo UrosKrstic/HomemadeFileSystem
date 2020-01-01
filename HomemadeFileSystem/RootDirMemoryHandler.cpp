@@ -1,12 +1,14 @@
 #include "RootDirMemoryHandler.h"
 #include "FCB.h"
 #include <iostream>
+#include "PartitionError.h"
 
 RootDirMemoryHandler::~RootDirMemoryHandler() {
 	for (auto& fcb : nameToFCBmap) {
 		delete fcb.second;
 		fcb.second = nullptr;
 	}
+	nameToFCBmap.clear();
 }
 
 std::map<std::string, FCB*>* RootDirMemoryHandler::getNameToFCBMap() {
@@ -141,10 +143,13 @@ int RootDirMemoryHandler::deleteFile(std::string& fpath) {
 }
 
 void RootDirMemoryHandler::saveToDrive() {
-	FLICluster.saveToDrive();
-	for (auto& elem : nameToFCBmap) {
-		elem.second->saveToDrive();
+	try {
+		FLICluster.saveToDrive();
+		for (auto& elem : nameToFCBmap) {
+			elem.second->saveToDrive();
+		}
 	}
+	catch(PartitionError&) {}
 }
 
 void RootDirMemoryHandler::format() {

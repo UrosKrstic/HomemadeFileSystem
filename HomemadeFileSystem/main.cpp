@@ -18,13 +18,14 @@ char * str_creator(int size, char fill) {
 }
 
 DWORD WINAPI reader() {
-	
+
 
 	char * buffer = new char[5];
 	unsigned cnt = 0;
 	File * file = nullptr;
 	do {
 		file = FS::open(const_cast<char*>("/fajl.txt"), 'r');
+		if (file == nullptr) Sleep(2000);
 	} while (file == nullptr);
 	file->read(5, buffer);
 	cout << "Citalac procitao:\n";
@@ -43,7 +44,7 @@ DWORD WINAPI writer() {
 	file->write(5, buffer);
 	cout << "Pisac upisao podatke\n";
 	delete[] buffer;
-	Sleep(5000);
+	Sleep(10000);
 	delete file;
 	return 0;
 }

@@ -9,6 +9,7 @@ FCB::FCB(FCBIndex& fcbInd, FCBData * data, Partition * p, BitVector& bitV, Kerne
 	InitializeCriticalSection(&criticalSection);
 	InitializeConditionVariable(&readCond);
 	InitializeConditionVariable(&writeCond);
+	InitializeConditionVariable(&noBlockedThreads);
 }
 FCB::FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, DataCluster& dc) : fcbIndex(fcbInd), fcbData(data), part(p), bitVector(bitV), kernelFS(kerFS), myDC(dc) {
 	InitializeCriticalSection(&criticalSection);
@@ -18,9 +19,19 @@ FCB::FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, Kern
 
 FCB::~FCB() {
 	DeleteCriticalSection(&criticalSection);
+	InitializeCriticalSection(&blockedThreadCritSection);
 	if (fliCluster != nullptr) {
 		fliCluster->saveToDrive();
 	}
+	deleted = true;
+	WakeAllConditionVariable(&readCond);
+	WakeAllConditionVariable(&writeCond);
+	EnterCriticalSection(&blockedThreadCritSection);
+	while (blockedThreadCount > 0) {
+		SleepConditionVariableCS(&noBlockedThreads, &blockedThreadCritSection, INFINITE);
+	}
+	LeaveCriticalSection(&blockedThreadCritSection);
+	DeleteCriticalSection(&blockedThreadCritSection);
 }
 
 
@@ -28,11 +39,19 @@ File * FCB::createFileInstance(char mode) {
 	EnterCriticalSection(&criticalSection);
 	File * file = nullptr;
 	while (mode == 'r' && currentMode != idle && currentMode != reading) {
+		blockedThreadCount++;
 		SleepConditionVariableCS(&readCond, &criticalSection, INFINITE);
+		blockedThreadCount--;
+		if (blockedThreadCount == 0) WakeConditionVariable(&noBlockedThreads);
+		if (deleted) return nullptr;
 	}
 
 	while (mode != 'r' && currentMode != idle) {
+		blockedThreadCount++;
 		SleepConditionVariableCS(&writeCond, &criticalSection, INFINITE);
+		blockedThreadCount--;
+		if (blockedThreadCount == 0) WakeConditionVariable(&noBlockedThreads);
+		if (deleted) return nullptr;
 	}
 	try {
 		if (fcbData->firstIndexClusterNo != 0 && loadFLI) {
