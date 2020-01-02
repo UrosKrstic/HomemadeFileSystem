@@ -17,11 +17,14 @@ namespace kernel_fs {
 
 
 class FCB;
+class KernelFile;
 class RootDirMemoryHandler;
 
 class KernelFS {
 
 public:
+	friend FCB;
+	friend KernelFile;
 	KernelFS()=default;
 	char mount(Partition * partition);
 	char unmount();
@@ -34,7 +37,7 @@ public:
 	void removeOpenFile() { openFileCount--; }
 	bool isFormatingInProgress() const { return formatingInProgress; }
 	void setFormatingInProgress(bool value) { formatingInProgress = value; }
-	int getFileCount() const { return fileCount; }
+	int getFileCount() const { return fileNameToFCBmap->size(); }
 
 	static bool isPartitionMounted() { return partitionMounted; }
 

@@ -40,13 +40,12 @@ ClusterNo BitVector::getFreeClusterNumberForUse() {
 void BitVector::freeUpClusters(std::vector<ClusterNo>& clusterVector) {
 	dirty = true;
 	for (unsigned long clusterNo : clusterVector) {
-		data[clusterNo / 8] |= 1 << clusterNo % 8;
+		data[clusterNo / 8] |= 1 << (7 - clusterNo % 8);
 	}
 }
 
 void BitVector::format() {
-	std::fill_n(data, ClusterSize, 0xff);
-	//memset(data, 0xff, ClusterSize);
+	memset(data, 0xff, ClusterSize);
 	data[0] &= notAllowedBitMask;
 	dirty = true;
 }

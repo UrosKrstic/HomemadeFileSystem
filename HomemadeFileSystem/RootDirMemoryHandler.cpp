@@ -158,10 +158,10 @@ void RootDirMemoryHandler::format() {
 		delete elem.second; // fcb deallocation (first = string, second = fcb*)
 	}
 	nameToFCBmap.clear();
+	while (!leftoverFreeFileSlots.empty()) leftoverFreeFileSlots.pop();
 	FLICluster.format();
 }
 
-// void RootDirMemoryHandler::updateFile() TODO: WHEN SIZE CHANGES SO DOES THE ROOTDIRSLOT 
 
 
 

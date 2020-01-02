@@ -68,6 +68,7 @@ File * FCB::createFileInstance(char mode) {
 		file = new File();
 		file->myImpl = kernelFile;
 		numberOfOpenFiles++;
+		kernelFS.openFileCount++;
 	}
 	catch(PartitionError&) {}
 	LeaveCriticalSection(&criticalSection);
@@ -91,7 +92,7 @@ void FCB::clearClusters() {
 				(*fliCluster)[i].getDataClusters().clear();
 			}
 			fliCluster->getSecondLevelIndexClusters().clear();
-			bitVector.freeUpClusters(cNoVector);
+ 			bitVector.freeUpClusters(cNoVector);
 			delete fliCluster;
 			fcbData->firstIndexClusterNo = 0;
 			fcbData->fileSize = 0;

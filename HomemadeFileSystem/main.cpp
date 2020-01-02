@@ -1,64 +1,51 @@
-#include <windows.h>
-#include <iostream>
-#include "fs.h"
-#include "part.h"
-#include "file.h"
+#pragma warning(disable : 4996)
+#include"testprimer.h"
+
 using namespace std;
 
-
-HANDLE nit1, nit2, nit3;
+HANDLE nit1, nit2;
 DWORD ThreadID;
 
-auto * partition = new Partition(const_cast<char *>("p1.ini"));
+HANDLE semMain = CreateSemaphore(NULL, 0, 32, NULL);
+HANDLE sem12 = CreateSemaphore(NULL, 0, 32, NULL);
+HANDLE sem21 = CreateSemaphore(NULL, 0, 32, NULL);
+HANDLE mutex = CreateSemaphore(NULL, 1, 32, NULL);
 
-char * str_creator(int size, char fill) {
-	char * buffer = new char[size];
-	for (int i = 0; i < size; i++) buffer[i] = fill;
-	return buffer;
-}
+Partition *partition;
 
-DWORD WINAPI reader() {
+char *ulazBuffer;
+int ulazSize;
 
+int main() {
+	clock_t startTime, endTime;
+	cout << "Pocetak testa!" << endl;
+	startTime = clock();//pocni merenje vremena
 
-	char * buffer = new char[5];
-	unsigned cnt = 0;
-	File * file = nullptr;
-	do {
-		file = FS::open(const_cast<char*>("/fajl.txt"), 'r');
-		if (file == nullptr) Sleep(2000);
-	} while (file == nullptr);
-	file->read(5, buffer);
-	cout << "Citalac procitao:\n";
-	cout << buffer << endl;
-	delete[] buffer;
-	delete file;
-	Sleep(5000);
-	return 0;
-}
+	{//ucitavamo ulazni fajl u bafer, da bi nit 1 i 2 mogle paralelno da citaju
+		FILE *f = fopen("ulaz.dat", "rb");
+		if (f == 0) {
+			cout << "GRESKA: Nije nadjen ulazni fajl 'ulaz.dat' u os domacinu!" << endl;
+			system("PAUSE");
+			return 0;//exit program
+		}
+		ulazBuffer = new char[32 * 1024 * 1024];//32MB
+		ulazSize = fread(ulazBuffer, 1, 32 * 1024 * 1024, f);
+		fclose(f);
+	}
 
-DWORD WINAPI writer() {
-	File * file = FS::open(const_cast<char*>("/fajl.txt"), 'w');
+	nit1 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)nit1run, NULL, 0, &ThreadID); //kreira i startuje niti
+	nit2 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)nit2run, NULL, 0, &ThreadID);
 
-	char * buffer = str_creator(5, 'a');
-
-	file->write(5, buffer);
-	cout << "Pisac upisao podatke\n";
-	delete[] buffer;
-	Sleep(10000);
-	delete file;
-	return 0;
-}
-
-
-int main(int argc, char* argv[]) {
-	FS::mount(partition);
-	nit1 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)reader, NULL, 0, &ThreadID);
-	nit3 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)reader, NULL, 0, &ThreadID);
-	nit2 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)writer, NULL, 0, &ThreadID);
-	HANDLE lpHandles[3] = { nit1, nit2, nit3 };
-	WaitForMultipleObjects(3, lpHandles, TRUE, INFINITE);
+	for (int i = 0; i < 2; i++) wait(semMain);//cekamo da se niti zavrse
+	delete[] ulazBuffer;
+	endTime = clock();
+	cout << "Kraj test primera!" << endl;
+	cout << "Vreme izvrsavanja: " << ((double)(endTime - startTime) / ((double)CLOCKS_PER_SEC / 1000.0)) << "ms!" << endl;
+	CloseHandle(mutex);
+	CloseHandle(semMain);
+	CloseHandle(sem12);
+	CloseHandle(sem21);
 	CloseHandle(nit1);
 	CloseHandle(nit2);
-	FS::unmount();
-	delete partition;
+	return 0;
 }

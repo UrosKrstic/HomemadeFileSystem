@@ -137,6 +137,7 @@
     <ClInclude Include="PartitionError.h" />
     <ClInclude Include="RootDirMemoryHandler.h" />
     <ClInclude Include="SecondLevelIndexCluster.h" />
+    <ClInclude Include="testprimer.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="notes.txt" />
@@ -155,6 +156,8 @@
     <ClCompile Include="KernelFS.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MemoryHandler.cpp" />
+    <ClCompile Include="nit1.cpp" />
+    <ClCompile Include="nit2.cpp" />
     <ClCompile Include="PartitionError.cpp" />
     <ClCompile Include="RootDirMemoryHandler.cpp" />
     <ClCompile Include="SecondLevelIndexCluster.cpp" />

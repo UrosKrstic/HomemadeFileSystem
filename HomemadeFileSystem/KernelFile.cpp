@@ -3,6 +3,8 @@
 #include "PartitionError.h"
 #include "ClusterFullException.h"
 #include "NoFreeClustersException.h"
+#include <ostream>
+#include <iostream>
 
 
 KernelFile::KernelFile(FCB * myFCB, char mode, FirstLevelIndexCluster * fli) {
@@ -24,6 +26,7 @@ KernelFile::KernelFile(FCB * myFCB, char mode, FirstLevelIndexCluster * fli) {
 
 KernelFile::~KernelFile() {
 	myFCB->numberOfOpenFiles--;
+	myFCB->kernelFS.openFileCount--;
 	if (mode == 'r') {
 		myFCB->readCount--;
 		if (myFCB->readCount == 0) {
@@ -34,12 +37,13 @@ KernelFile::~KernelFile() {
 	}
 	else {
 		myFCB->currentMode = FCB::idle;
-		WakeAllConditionVariable(&myFCB->readCond);
-		WakeConditionVariable(&myFCB->writeCond);
-		fliCluster->saveToDrive();
+		if (fliCluster != nullptr)
+			fliCluster->saveToDrive();
 		myFCB->fcbData->fileSize = currentSize;
 		myFCB->fliCluster = fliCluster;
 		myFCB->myDC.setDirty();
+		WakeAllConditionVariable(&myFCB->readCond);
+		WakeConditionVariable(&myFCB->writeCond);
 
 	}
 }
@@ -138,12 +142,12 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 		}
 		catch(NoFreeClustersException&) {
 			currentPos = oldCurrentPos;
-			//TODO: ADD TRUNCATION TO OLD POSITION
+			std::cout << "Ostao bez klastera" << std::endl;
 			return 0;
 		}
 		catch (PartitionError&) {
 			currentPos = oldCurrentPos;
-			//TODO: ADD TRUNCATION TO OLD POSITION
+			std::cout << "greska particije" << std::endl;
 			return 0;
 		}
 	}

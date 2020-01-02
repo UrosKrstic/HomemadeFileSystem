@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _DATA_CLUSTER_H_
+#define _DATA_CLUSTER_H_
 #include "Cluster.h"
 class DataCluster : public Cluster {
 public:
@@ -6,3 +7,4 @@ public:
 	void unSetDirty() {  dirty = false; }
 };
 
+#endif // _DATA_CLUSTER_H_

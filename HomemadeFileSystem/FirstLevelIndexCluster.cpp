@@ -47,9 +47,10 @@ void FirstLevelIndexCluster::saveToDrive() {
 }
 
 void FirstLevelIndexCluster::format() {
-	//std::fill_n(data, ClusterSize, 0);
 	memset(data, 0, ClusterSize);
 	setDirty();
+	for (auto sli : secondLvlClusters)
+		delete sli;
 	secondLvlClusters.clear();
 	currentSize = 0;
 }

@@ -66,6 +66,9 @@
     <ClInclude Include="NoFreeClustersException.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="testprimer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="notes.txt">
@@ -119,6 +122,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PartitionError.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="nit1.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="nit2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
