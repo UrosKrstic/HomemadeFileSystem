@@ -9,7 +9,7 @@ char FS::mount(Partition* partition) {
 	InitOnceExecuteOnce(&kernel_fs::initOnceVariable, kernel_fs::InitFunction, nullptr, nullptr);
 
 	EnterCriticalSection(&kernel_fs::fsLock);
-	while (KernelFS::isPartitionMounted()) {
+	while (KernelFS::isPartitionMounted() && GetCurrentThreadId() != myImpl->getThreadID()) {
 		SleepConditionVariableCS(&kernel_fs::isMountedCond, &kernel_fs::fsLock, INFINITE);
 	}
 	myImpl = new KernelFS();

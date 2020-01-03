@@ -35,6 +35,7 @@ public:
 	bool openFiles() { return openFileCount > 0; }
 	void addOpenFile() { openFileCount++; }
 	void removeOpenFile() { openFileCount--; }
+	unsigned getThreadID() { return threadID; }
 	bool isFormatingInProgress() const { return formatingInProgress; }
 	void setFormatingInProgress(bool value) { formatingInProgress = value; }
 	int getFileCount() const { return fileNameToFCBmap->size(); }
@@ -53,6 +54,7 @@ private:
 	std::map<std::string, FCB*>* fileNameToFCBmap = nullptr;
 	bool formatingInProgress = false;
 	unsigned fileCount = 0, openFileCount = 0;
+	unsigned threadID;
 
 };
 

@@ -33,6 +33,7 @@ char KernelFS::mount(Partition* partition) {
 		rootDirMemoryHandler = new RootDirMemoryHandler(*bitVector, rootDirFirstLevelIndexClusterNo, partition, *this);
 		fileNameToFCBmap = rootDirMemoryHandler->getNameToFCBMap();
 		fileCount = fileNameToFCBmap->size();
+		threadID = GetCurrentThreadId();
 		return 1;
 	}
 	catch(PartitionError& pe) {

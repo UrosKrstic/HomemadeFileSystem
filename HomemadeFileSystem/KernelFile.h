@@ -44,7 +44,7 @@ private:
 	std::vector<DataCluster*> cache;
 	//std::map<DataCluster*, DataClusterWithReferenceBit*> cache;
 
-	static constexpr int cacheSize = 128;
+	static constexpr int cacheSize = 32;
 
 };
 
