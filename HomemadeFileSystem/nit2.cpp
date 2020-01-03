@@ -5,6 +5,7 @@ static char threadName[] = "Nit2";
 DWORD WINAPI nit2run(){
 	wait(sem12);	//ceka nit1
 	signal(sem21); // signalizira nit1
+	clock_t start, end;
 	{
 		File *src, *dst;
 		char filepath[] = "/fajl1.dat";
@@ -17,10 +18,13 @@ DWORD WINAPI nit2run(){
 		dst = FS::open(filepath1, 'w');
 		wait(mutex); cout << threadName << ": Otvoren fajl '" << filepath1 << "'" << endl; signal(mutex);
 		char c;
+		//start = clock();
 		while (!src->eof()) {
 			src->read(1, &c);
 			dst->write(1, &c);
 		}
+		//end = clock();
+		//wait(mutex); cout << threadName << ": vreme upisivanje u fajll2.dat: " << ((double)(end - start) / ((double)CLOCKS_PER_SEC / 1000.0)) << endl; signal(mutex);
 		wait(mutex); cout << threadName << ": Prepisan fajl '" << filepath << "' u '" << filepath1 << "'" << endl; signal(mutex);
 		delete dst;
 		wait(mutex); cout << threadName << ": Zatvoren fajl '" << filepath1 << "'" << endl; signal(mutex);
@@ -48,8 +52,11 @@ DWORD WINAPI nit2run(){
 		wait(mutex); cout<< threadName << ": Otvoren fajl " << filepath << ""<<endl; signal(mutex);
 		ofstream fout("izlaz1.dat", ios::out|ios::binary);
 		char *buff=new char[f->getFileSize()];
+		//start = clock();
 		f->read(f->getFileSize(),buff);
 		fout.write(buff,f->getFileSize());
+		//end = clock();
+		//wait(mutex); cout << threadName << ": vreme upisivanje u izlaz.dat: " << ((double)(end - start) / ((double)CLOCKS_PER_SEC / 1000.0)) << endl; signal(mutex);
 		wait(mutex); cout<< threadName << ": Upisan '" << filepath << "' u fajl os domacina 'izlaz1.dat'"<<endl; signal(mutex);
 		delete [] buff;
 		fout.close();
@@ -73,10 +80,13 @@ DWORD WINAPI nit2run(){
 		dst = FS::open(filepath1, 'w');
 		wait(mutex); cout << threadName << ": Otvoren fajl '" << filepath1 << "'" << endl; signal(mutex);
 		char c; BytesCnt cnt = src->getFileSize() - size;
+		//start = clock();
 		while (!src->eof() && cnt-- > 0) {
 			src->read(1, &c);
 			dst->write(1, &c);
 		}
+		//end = clock();
+		//wait(mutex); cout << threadName << ": vreme upisivanje u fajl25.dat: " << ((double)(end - start) / ((double)CLOCKS_PER_SEC / 1000.0)) << endl; signal(mutex);
 		wait(mutex); cout << threadName << ": Prepisana prva polovina '" << filepath << "' u '" << filepath1 << "'" << endl; signal(mutex);
 		delete dst;
 		wait(mutex); cout << threadName << ": Zatvoren fajl '" << filepath1 << "'" << endl; signal(mutex);
@@ -94,8 +104,11 @@ DWORD WINAPI nit2run(){
 		wait(mutex); cout << threadName << ": Otvoren fajl " << filepath << "" << endl; signal(mutex);
 		ofstream fout("izlaz2.dat", ios::out | ios::binary);
 		char *buff = new char[f->getFileSize()];
+		//start = clock();
 		f->read(f->getFileSize(), buff);
 		fout.write(buff, f->getFileSize());
+		//end = clock();
+		//wait(mutex); cout << threadName << ": vreme upisivanje u izlaz2.dat: " << ((double)(end - start) / ((double)CLOCKS_PER_SEC / 1000.0)) << endl; signal(mutex);
 		wait(mutex); cout << threadName << ": Upisan '" << filepath << "' u fajl os domacina 'izlaz2.dat'" << endl; signal(mutex);
 		delete[] buff;
 		fout.close();

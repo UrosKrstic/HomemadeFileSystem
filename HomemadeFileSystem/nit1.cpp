@@ -34,13 +34,13 @@ DWORD WINAPI nit1run(){
 		dst=FS::open(filepath1,'w');
 		wait(mutex); cout<< threadName << ": Otvoren fajl '" << filepath1 << "'"<<endl; signal(mutex);
 		char c;
-		start = clock();
+		//start = clock();
 		while(!src->eof()){
 			src->read(1,&c);
 			dst->write(1,&c);
 		}
-		end = clock();
-		wait(mutex); cout << threadName << ": vreme upisivanje u fajll5.dat: " << ((double)(end - start) / ((double)CLOCKS_PER_SEC / 1000.0)) << endl; signal(mutex);
+		//end = clock();
+		//wait(mutex); cout << threadName << ": vreme upisivanje u fajll5.dat: " << ((double)(end - start) / ((double)CLOCKS_PER_SEC / 1000.0)) << endl; signal(mutex);
 		wait(mutex); cout<< threadName << ": Prepisana druga polovina '" << filepath << "' u '" << filepath1 << "'"<<endl; signal(mutex);
 		delete dst;
 		wait(mutex); cout<< threadName << ": Zatvoren fajl '" << filepath1 << "'"<<endl; signal(mutex);
@@ -61,10 +61,13 @@ DWORD WINAPI nit1run(){
 		src = FS::open(filepath1, 'r');
 		wait(mutex); cout << threadName << ": Otvoren fajl '" << filepath1 << "'" << endl; signal(mutex);
 		char c;
+		//start = clock();
 		while (!src->eof()) {
 			src->read(1, &c);
 			dst->write(1, &c);
 		}
+		//end = clock();
+		//wait(mutex); cout << threadName << ": vreme upisivanje u fajll5.dat: " << ((double)(end - start) / ((double)CLOCKS_PER_SEC / 1000.0)) << endl; signal(mutex);
 		wait(mutex); cout << threadName << ": Prepisana druga polovina '" << filepath << "' u '" << filepath1 << "'" << endl; signal(mutex);
 		delete dst;
 		wait(mutex); cout << threadName << ": Zatvoren fajl '" << filepath1 << "'" << endl; signal(mutex);

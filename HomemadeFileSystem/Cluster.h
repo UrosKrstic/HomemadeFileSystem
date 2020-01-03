@@ -3,6 +3,8 @@
 #include "part.h"
 #include <Windows.h>
 
+class KernelFile;
+
 class Cluster {
 protected:
 	ClusterNo clusterNumber;
@@ -13,6 +15,12 @@ protected:
 	CRITICAL_SECTION critSection;
 public:
 	Cluster(ClusterNo clusterNumber, Partition * part, bool loadClusterData = true);
+
+	Cluster(const Cluster&) = delete;
+	Cluster(Cluster&&) = delete;
+	Cluster& operator=(const Cluster&) = delete;
+	Cluster& operator=(Cluster&&) = delete;
+
 	~Cluster() { delete[] data; DeleteCriticalSection(&critSection); }
 	ClusterNo getClusterNumber() { return clusterNumber; }
 	void initDataWithZeros();

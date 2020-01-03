@@ -6,14 +6,13 @@
 #include <ostream>
 #include <iostream>
 
-
 KernelFile::KernelFile(FCB * myFCB, char mode, FirstLevelIndexCluster * fli) {
 	this->currentSize = myFCB->fcbData->fileSize;
 	this->currentPos = mode != 'a' ? 0 : currentSize;
 	this->mode = mode;
 	this->myFCB = myFCB;
 	fliCluster = fli;
-	if (fli != nullptr) {
+	/*if (fli != nullptr) {
 		BytesCnt bytesCnt = 0;
 		for (unsigned i = 0; i < fliCluster->getCurrentSize_32b(); i++) {
 			for (unsigned j = 0; j < (*fliCluster)[i].getCurrentSize_32b(); j++) {
@@ -21,12 +20,13 @@ KernelFile::KernelFile(FCB * myFCB, char mode, FirstLevelIndexCluster * fli) {
 				bytesCnt += ClusterSize;
 			}
 		}
-	}
+	}*/
 }
 
 KernelFile::~KernelFile() {
 	myFCB->numberOfOpenFiles--;
 	myFCB->kernelFS.openFileCount--;
+	cache.clear();
 	if (mode == 'r') {
 		myFCB->readCount--;
 		if (myFCB->readCount == 0) {
@@ -44,32 +44,93 @@ KernelFile::~KernelFile() {
 		myFCB->myDC.setDirty();
 		WakeAllConditionVariable(&myFCB->readCond);
 		WakeConditionVariable(&myFCB->writeCond);
-
 	}
 }
 
-char * KernelFile::getDataFromCacheAndUpdateCache(BytesCnt dataClusterStartByte) {
-	if (cache.find(dataClusterStartByte) == cache.end()) {
+//char * KernelFile::getDataFromCacheAndUpdateCache(BytesCnt dataClusterStartByte, DataClusterWithReferenceBit* currDC) {
+//	auto currentIter = cache.find(dataClusterStartByte);
+//	if (currentIter == cache.end()) {
+//		if (cache.size() >= cacheSize) {
+//			auto minIter = cache.begin();
+//			if (minIter->first == dataClusterStartByte) ++minIter;
+//			int minRef = minIter->second->referenceCount;
+//			for (auto iter = cache.begin(); iter != cache.end(); ++iter) {
+//				if (minRef == 1) break;
+//				if (iter->first != dataClusterStartByte && iter->second->referenceCount < minRef) {
+//					minIter = iter;
+//					minRef = iter->second->referenceCount;
+//				}
+//			}
+//			minIter->second->dataCluster->saveToDrive();
+//			cache.erase(minIter);
+//		}
+//		cache[dataClusterStartByte] = currDC;
+//		currDC->referenceCount = 0;
+//		if (mode != 'r') currDC->dataCluster->setDirty();
+//		return currDC->dataCluster->loadData();
+//	}
+//	currentIter->second->referenceCount++;
+//	return currentIter->second->dataCluster->getData();
+//}
+
+//char * KernelFile::getDataFromCacheAndUpdateCache(DataCluster * dc) {
+//	auto iter = cache.find(dc);
+//	if (iter == cache.end()) {
+//		auto dcRef = new DataClusterWithReferenceBit(dc);
+//		dcRef->referenceCount = 1;
+//		dc->setDirty();
+//		if (cache.size() >= cacheSize) {
+//			auto minIter = cache.begin();
+//			int minRef = minIter->second->referenceCount;
+//			for (auto i = cache.begin(); i != cache.end(); ++i) {
+//				if (i->second->referenceCount == 1) break;
+//				if (i->second->referenceCount < minRef) {
+//					minIter = i;
+//					minRef = i->second->referenceCount;
+//				}
+//			}
+//			minIter->first->saveToDrive();
+//			//delete minIter->second;
+//			cache.erase(minIter);
+//		}
+//		cache[dc] = dcRef;
+//		return dc->loadData();
+//	}
+//	else {
+//		dc->setDirty();
+//		iter->second->referenceCount++;
+//		return dc->getData();
+//	}
+//}
+
+char * KernelFile::getDataFromCacheAndUpdateCache(DataCluster * dc, bool isSmallData) {
+	if (dc->getData() == nullptr) {
+		dc->setDirty();
 		if (cache.size() >= cacheSize) {
-			auto minIter = cache.begin();
-			if (minIter->first == dataClusterStartByte) ++minIter;
-			int minRef = minIter->second->referenceCount;
-			for (auto iter = cache.begin(); iter != cache.end(); ++iter) {
-				if (minRef == 1) break;
-				if (iter->first != dataClusterStartByte && iter->second->referenceCount < minRef) {
-					minIter = iter;
-					minRef = iter->second->referenceCount;
+			if (!isSmallData) {
+				auto minIter = cache.begin();
+				auto minCount = (*minIter)->getReferenceCount();
+				for (auto iter = cache.begin(); iter != cache.end(); ++iter) {
+					auto count = (*iter)->getReferenceCount();
+					if (count < minCount) {
+						minIter = iter;
+						minCount = count;
+					}
+					if (count == 1) break;
 				}
+				(*minIter)->saveToDrive();
 			}
-			minIter->second->dataCluster->saveToDrive();
-			cache.erase(minIter);
+			else {
+				auto iter = cache.erase(cache.begin());
+				(*iter)->saveToDrive();
+			}
 		}
-		cache[dataClusterStartByte] = byteCntToDataCluster[dataClusterStartByte];
-		cache[dataClusterStartByte]->referenceCount = 0;
-		cache[dataClusterStartByte]->dataCluster->loadData();
+		cache.push_back(dc);
+		dc->resetReferenceCount();
 	}
-	cache[dataClusterStartByte]->referenceCount++;
-	return cache[dataClusterStartByte]->dataCluster->getData();
+	dc->setDirty();
+	dc->addReference();
+	return dc->loadData();
 }
 
 char KernelFile::write(BytesCnt cnt, char * buffer) {
@@ -90,36 +151,39 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 			return 0;
 		}
 	}
-	auto oldCurrentPos = currentPos;
-	auto buffSize = cnt;
+	BytesCnt oldCurrentPos = currentPos;
 	BytesCnt start = 0;
-	int cao = 0;
+	auto& sliClusters = fliCluster->getSecondLevelIndexClusters();
+	bool isSmallData = cnt <= cacheSize;
+
 	while (cnt > 0) {
 		try {
-			BytesCnt dataClusterStartByte = currentPos / ClusterSize * ClusterSize;
-			if (byteCntToDataCluster[dataClusterStartByte] == nullptr) {
+			/*BytesCnt dataClusterStartByte = currentPos / ClusterSize * ClusterSize;
+			auto currentDataCluster = byteCntToDataCluster[dataClusterStartByte];
+			if (currentDataCluster == nullptr) {
 				if (fliCluster->getCurrentSize_32b() == 0) {
 					auto cNo = myFCB->bitVector.getFreeClusterNumberForUse();
 					auto& sli = fliCluster->addSecondLevelIndexCluster(cNo);
 					cNo = myFCB->bitVector.getFreeClusterNumberForUse();
-					byteCntToDataCluster[dataClusterStartByte] = new DataClusterWithReferenceBit(sli.addCluster(cNo));
+					currentDataCluster = new DataClusterWithReferenceBit(sli.addCluster(cNo));
 				}
 				else {
 					auto& sli = (*fliCluster)[fliCluster->getCurrentSize_32b() - 1];
 					auto cNo = myFCB->bitVector.getFreeClusterNumberForUse();
 					bool sliFull = false;
 					try {
-						byteCntToDataCluster[dataClusterStartByte] = new DataClusterWithReferenceBit(sli.addCluster(cNo));
+						currentDataCluster = new DataClusterWithReferenceBit(sli.addCluster(cNo));
 					}
 					catch (ClusterFullException&) {
 						sliFull = true;
+						delete currentDataCluster;
 					}
 					if (sliFull) {
 						try {
 							fliCluster->addSecondLevelIndexCluster(cNo);
 							cNo = myFCB->bitVector.getFreeClusterNumberForUse();
 							auto& s = (*fliCluster)[fliCluster->getCurrentSize_32b() - 1];
-							byteCntToDataCluster[dataClusterStartByte] = new DataClusterWithReferenceBit(s.addCluster(cNo));
+							currentDataCluster = new DataClusterWithReferenceBit(s.addCluster(cNo));
 						}
 						catch (ClusterFullException&) {
 							std::vector<unsigned long> v = { cNo };
@@ -128,10 +192,39 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 						}
 					}
 				}
+				byteCntToDataCluster[dataClusterStartByte] = currentDataCluster;
+			}*/
+			oldCurrentPos = currentPos;
+			unsigned dcIndex = currentPos / ClusterSize;
+			unsigned sliIndex = dcIndex / 512;
+			dcIndex %= 512;
+			ClusterNo cNo = 0;
+			if (sliIndex >= sliClusters.size()) {
+				try {
+					cNo = myFCB->bitVector.getFreeClusterNumberForUse();
+					fliCluster->addSecondLevelIndexCluster(cNo);
+				}
+				catch (ClusterFullException&) {
+					std::vector<unsigned long> v = { cNo };
+					myFCB->bitVector.freeUpClusters(v);
+					return 0;
+				}
 			}
-			cao++;
-			char * data = getDataFromCacheAndUpdateCache(dataClusterStartByte);
-			cache[dataClusterStartByte]->dataCluster->setDirty();
+			auto& sliCluster = sliClusters[sliIndex];
+			auto& dataClusters = sliCluster->getDataClusters();
+			if (dcIndex >= dataClusters.size()) {
+				try {
+					cNo = myFCB->bitVector.getFreeClusterNumberForUse();
+					sliCluster->addCluster(cNo);
+				}
+				catch (ClusterFullException&) {
+					std::cout << "oops" << std::endl;
+					return 0;
+				}
+			}
+			
+			char * data = getDataFromCacheAndUpdateCache(dataClusters[dcIndex], isSmallData);
+			dataClusters[dcIndex]->setDirty();
 			unsigned int startPos = currentPos % ClusterSize;
 			unsigned int writeSize = min(cnt, ClusterSize - startPos);
 			memcpy(data + startPos, buffer + start, writeSize);
@@ -157,15 +250,25 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 BytesCnt KernelFile::read(BytesCnt cnt, char * buffer)  {	
 	if (eof() || mode != 'r') return 0;
 	auto oldCurrentPos = currentPos;
-	auto buffSize = cnt;
 	BytesCnt start = 0;
+	bool isSmallData = cnt <= cacheSize;
+	BytesCnt currentSizeStartByte = currentSize / ClusterSize * ClusterSize;
+	BytesCnt currentSizeClusterOff = currentSize % ClusterSize;
 	while (cnt > 0) {
 		BytesCnt dataClusterStartByte = currentPos / ClusterSize * ClusterSize;
-		if (byteCntToDataCluster[dataClusterStartByte] != nullptr) {
-			char * data = getDataFromCacheAndUpdateCache(dataClusterStartByte);
+
+		unsigned dcIndex = currentPos / ClusterSize;
+		unsigned sliIndex = dcIndex / 512;
+		dcIndex %= 512;
+		
+		auto& sliClusters = fliCluster->getSecondLevelIndexClusters();
+		if (sliIndex >= sliClusters.size()) return 0;
+		auto& dataClusters = sliClusters[sliIndex]->getDataClusters();
+		if (dcIndex < dataClusters.size()) {
+			char * data = getDataFromCacheAndUpdateCache(dataClusters[dcIndex], isSmallData);
 			unsigned int startPos = currentPos % ClusterSize; 
 			unsigned int writeSize = min(cnt, ClusterSize - startPos);
-			if (dataClusterStartByte == currentSize / ClusterSize * ClusterSize) writeSize = min(writeSize, currentSize % ClusterSize - startPos);
+			if (dataClusterStartByte == currentSizeStartByte) writeSize = min(writeSize, currentSizeClusterOff - startPos);
 			memcpy(buffer + start, data + startPos, writeSize);
 			start += writeSize;
 			cnt -= writeSize;
@@ -249,5 +352,3 @@ char KernelFile::truncate() {
 
 	return 0;
 }
-
-

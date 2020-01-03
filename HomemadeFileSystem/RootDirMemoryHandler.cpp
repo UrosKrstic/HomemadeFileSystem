@@ -29,7 +29,6 @@ std::map<std::string, FCB*>* RootDirMemoryHandler::getNameToFCBMap() {
 						} catch(std::exception&) {}
 						std::string ext(std::string(".") + std::string(fcbData[k].ext, FEXTLEN));
 						fullName += ext;
-						//std::cout << "Puno ime starog fajla sa diska: " << fullName.c_str() << std::endl;
 						nameToFCBmap[fullName] = new FCB(FCB::FCBIndex(i, j, k), &fcbData[k], part, bitVector, kernelFS, FLICluster[i][j]);
 					}
 					else {
@@ -48,28 +47,28 @@ FCB * RootDirMemoryHandler::createNewFile(std::string& fpath) {
 	std::string name = fpath.substr(1, fpath.size() - FEXTLEN - 2);
 	if (name.size() > FNAMELEN) name.erase(FNAMELEN);
 	while (name.size() < FNAMELEN) name += std::string(" ");
-	//std::cout << name.c_str() << "|" << ext.c_str() << std::endl;
 	FCBIndex ind;
 	bool newDataCluster = false, newSecondLevelIndexCluster = false;
 	if (!leftoverFreeFileSlots.empty()) {
-		std::cout << "Ima leftover spot\n";
 		auto fcbIndex = leftoverFreeFileSlots.front();
 		ind = fcbIndex;
 		leftoverFreeFileSlots.pop();
-		std::cout << "Spot: " << fcbIndex.sli << " " << fcbIndex.dc << " " << fcbIndex.ridc << std::endl; 
 		FLICluster[fcbIndex.sli][fcbIndex.dc].setDirty();
 	}
 	else {
 		if (FLICluster.getCurrentSize_32b() == 0) {
-			unsigned int cNo = bitVector.getFreeClusterNumberForUse();
-			if (cNo == 0) return nullptr;
-			FLICluster.addSecondLevelIndexCluster(cNo);
-			FLICluster.setDirty();
-			cNo = bitVector.getFreeClusterNumberForUse();
-			if (cNo == 0) return nullptr;
-			FLICluster[0].addDataCluster(cNo, false);
-			FLICluster[0].setDirty();
-			FLICluster[0][0].setDirty();
+			try {
+				unsigned int cNo = bitVector.getFreeClusterNumberForUse();
+				FLICluster.addSecondLevelIndexCluster(cNo);
+				FLICluster.setDirty();
+				cNo = bitVector.getFreeClusterNumberForUse();
+				FLICluster[0].addDataCluster(cNo, false);
+				FLICluster[0].setDirty();
+				FLICluster[0][0].setDirty();
+			}
+			catch(std::exception&) {
+				return nullptr;
+			}
 		}
 		else {
 			FCBIndex old;
@@ -90,14 +89,12 @@ FCB * RootDirMemoryHandler::createNewFile(std::string& fpath) {
 
 				if (newSecondLevelIndexCluster) {
 					ClusterNo cNo = bitVector.getFreeClusterNumberForUse();
-					if (cNo == 0) throw std::exception();
 					FLICluster.addSecondLevelIndexCluster(cNo);
 					FLICluster.setDirty();
 				}
 				auto& SLICluster = FLICluster[nextFreeSlot.sli];
 				if (newDataCluster) {
 					ClusterNo cNo = bitVector.getFreeClusterNumberForUse();
-					if (cNo == 0) throw std::exception();
 					SLICluster.addDataCluster(cNo, false);
 					SLICluster.setDirty();
 				}
