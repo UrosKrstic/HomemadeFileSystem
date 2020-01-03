@@ -12,7 +12,7 @@ DWORD WINAPI nit1run(){
 	signal(sem12); //signalizira niti 2
 	wait(mutex); cout << threadName << ": wait 1" << endl; signal(mutex);
 	wait(sem21); //ceka nit1
-	clock_t start, end;
+	//clock_t start, end;
 	{
 		char filepath[]="/fajl1.dat";
 		File *f=FS::open(filepath,'w');

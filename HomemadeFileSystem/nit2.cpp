@@ -5,7 +5,7 @@ static char threadName[] = "Nit2";
 DWORD WINAPI nit2run(){
 	wait(sem12);	//ceka nit1
 	signal(sem21); // signalizira nit1
-	clock_t start, end;
+	//clock_t start, end;
 	{
 		File *src, *dst;
 		char filepath[] = "/fajl1.dat";

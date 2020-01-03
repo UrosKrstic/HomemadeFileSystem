@@ -45,6 +45,7 @@ KernelFile::~KernelFile() {
 		WakeAllConditionVariable(&myFCB->readCond);
 		WakeConditionVariable(&myFCB->writeCond);
 	}
+	if (myFCB->kernelFS.openFileCount == 0) WakeAllConditionVariable(&kernel_fs::openFilesCond);
 }
 
 //char * KernelFile::getDataFromCacheAndUpdateCache(BytesCnt dataClusterStartByte, DataClusterWithReferenceBit* currDC) {

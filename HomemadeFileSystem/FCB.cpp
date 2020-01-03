@@ -7,19 +7,21 @@
 
 FCB::FCB(FCBIndex& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, DataCluster& dc) : fcbIndex(fcbInd), fcbData(data), part(p), bitVector(bitV), kernelFS(kerFS), myDC(dc) {
 	InitializeCriticalSection(&criticalSection);
+	InitializeCriticalSection(&blockedThreadCritSection);
 	InitializeConditionVariable(&readCond);
 	InitializeConditionVariable(&writeCond);
 	InitializeConditionVariable(&noBlockedThreads);
 }
 FCB::FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, DataCluster& dc) : fcbIndex(fcbInd), fcbData(data), part(p), bitVector(bitV), kernelFS(kerFS), myDC(dc) {
 	InitializeCriticalSection(&criticalSection);
+	InitializeCriticalSection(&blockedThreadCritSection);
 	InitializeConditionVariable(&readCond);
 	InitializeConditionVariable(&writeCond);
+	InitializeConditionVariable(&noBlockedThreads);
 }
 
 FCB::~FCB() {
 	DeleteCriticalSection(&criticalSection);
-	InitializeCriticalSection(&blockedThreadCritSection);
 	if (fliCluster != nullptr) {
 		fliCluster->saveToDrive();
 	}
@@ -42,7 +44,7 @@ File * FCB::createFileInstance(char mode) {
 		blockedThreadCount++;
 		SleepConditionVariableCS(&readCond, &criticalSection, INFINITE);
 		blockedThreadCount--;
-		if (blockedThreadCount == 0) WakeConditionVariable(&noBlockedThreads);
+		if (blockedThreadCount == 0) WakeAllConditionVariable(&noBlockedThreads);
 		if (deleted) return nullptr;
 	}
 
@@ -50,7 +52,7 @@ File * FCB::createFileInstance(char mode) {
 		blockedThreadCount++;
 		SleepConditionVariableCS(&writeCond, &criticalSection, INFINITE);
 		blockedThreadCount--;
-		if (blockedThreadCount == 0) WakeConditionVariable(&noBlockedThreads);
+		if (blockedThreadCount == 0) WakeAllConditionVariable(&noBlockedThreads);
 		if (deleted) return nullptr;
 	}
 	try {
@@ -70,7 +72,10 @@ File * FCB::createFileInstance(char mode) {
 		numberOfOpenFiles++;
 		kernelFS.openFileCount++;
 	}
-	catch(PartitionError&) {}
+	catch(PartitionError&) {
+		delete fliCluster;
+		fliCluster = nullptr;
+	}
 	LeaveCriticalSection(&criticalSection);
 	return file;
 }
