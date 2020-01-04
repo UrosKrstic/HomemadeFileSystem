@@ -29,7 +29,7 @@ char KernelFS::mount(Partition* partition) {
 	try {
 		this->partition = partition;
 		partitionMounted = true;
-		bitVector = new BitVector(bitVectorClusterNo, partition);
+		bitVector = new BitVector(partition);
 		rootDirMemoryHandler = new RootDirMemoryHandler(*bitVector, rootDirFirstLevelIndexClusterNo, partition, *this);
 		fileNameToFCBmap = rootDirMemoryHandler->getNameToFCBMap();
 		fileCount = fileNameToFCBmap->size();
@@ -37,6 +37,8 @@ char KernelFS::mount(Partition* partition) {
 		return 1;
 	}
 	catch(PartitionError& pe) {
+		delete bitVector;
+		delete rootDirMemoryHandler;
 		std::cout << "Mount failed: " << pe.what() << std::endl;
 		return 0;
 	}
@@ -60,8 +62,8 @@ char KernelFS::unmount() {
 }
 
 char KernelFS::format() {
-	bitVector->format();
 	rootDirMemoryHandler->format();
+	bitVector->format();
 	return 1;
 }
 

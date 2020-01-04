@@ -1,13 +1,35 @@
 #include "BitVector.h"
 #include <iostream>
 #include "NoFreeClustersException.h"
+#include "PartitionError.h"
 
 
-BitVector::BitVector(ClusterNo clusterNumber, Partition * part) : Cluster(clusterNumber, part) {
+BitVector::BitVector(Partition * part) : Cluster(bitVectorStartingCluster, part, false) {
 	totalClusterNo = part->getNumOfClusters();
 	totalBytes = totalClusterNo / 8;
 	remainder = totalClusterNo % 8;
-	data[0] &= notAllowedBitMask;
+	sizeOfBitVector = static_cast<unsigned>(ceil(totalClusterNo / (ClusterSize * 8.)));
+	data = new char[sizeOfBitVector * ClusterSize];
+	auto ret = part->readCluster(bitVectorStartingCluster, data);
+	if (ret == 0) throw PartitionError();
+	for (unsigned cNo = 2; cNo < sizeOfBitVector + 1; cNo++) {
+		ret = part->readCluster(cNo, data + ClusterSize * (cNo - 1));
+		if (ret == 0) throw PartitionError();
+	}
+	//data[0] &= notAllowedBitMask;
+	setBitVector();
+	dirty = false;
+}
+
+
+void BitVector::setBitVector() {
+	int bytes = sizeOfBitVector / 8;
+	int bits = sizeOfBitVector % 8;
+	memset(data, 0, bytes);
+	if (bytes == 0) bits++;
+	for (int i = 0; i < bits; i++) {
+		data[bytes] &= ~(1 << (7 - i));
+	}
 }
 
 ClusterNo BitVector::getFreeClusterNumberForUse() {
@@ -44,8 +66,34 @@ void BitVector::freeUpClusters(std::vector<ClusterNo>& clusterVector) {
 	}
 }
 
+
+
 void BitVector::format() {
-	memset(data, 0xff, ClusterSize);
-	data[0] &= notAllowedBitMask;
+	memset(data, 0xff, ClusterSize * sizeOfBitVector);
+	//data[0] &= notAllowedBitMask;
+	setBitVector();
 	dirty = true;
 }
+
+void BitVector::saveToDrive() {
+	EnterCriticalSection(&critSection);
+	if (dirty) {
+		auto ret = part->writeCluster(clusterNumber, data);
+		if (ret == 0) {
+			LeaveCriticalSection(&critSection);
+			throw PartitionError();
+		}
+		for (unsigned cNo = 2; cNo < sizeOfBitVector + 1; cNo++) {
+			ret = part->writeCluster(cNo, data + ClusterSize * (cNo - 1));
+			if (ret == 0) {
+				LeaveCriticalSection(&critSection);
+				throw PartitionError();
+			}
+		}
+		delete[] data;
+		data = nullptr;
+		dirty = false;
+	}
+	LeaveCriticalSection(&critSection);
+}
+

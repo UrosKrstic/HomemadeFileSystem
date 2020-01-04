@@ -154,6 +154,7 @@ void RootDirMemoryHandler::format() {
 		elem.second->clearClusters();
 		delete elem.second; // fcb deallocation (first = string, second = fcb*)
 	}
+	nextFreeSlot.setIndices(0, 0, 0);
 	nameToFCBmap.clear();
 	while (!leftoverFreeFileSlots.empty()) leftoverFreeFileSlots.pop();
 	FLICluster.format();
