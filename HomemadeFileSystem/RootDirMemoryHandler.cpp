@@ -9,6 +9,36 @@ RootDirMemoryHandler::~RootDirMemoryHandler() {
 		fcb.second = nullptr;
 	}
 	nameToFCBmap.clear();
+	DeleteCriticalSection(&critSection);
+}
+
+char * RootDirMemoryHandler::getDCFromCacheAndUpdateCache(unsigned sli, unsigned dci) {
+	EnterCriticalSection(&critSection);
+	auto& dataClusters = FLICluster.getSecondLevelIndexClusters()[sli]->getDataClusters();
+	DataCluster* dc = dataClusters[dci];
+	if (dc->getData() == nullptr) {
+		dc->setDirty();
+		if (cache.size() >= cacheSize) {
+			auto minIter = cache.begin();
+			auto minCount = (*minIter)->getReferenceCount();
+			for (auto iter = cache.begin(); iter != cache.end(); ++iter) {
+				auto count = (*iter)->getReferenceCount();
+				if (count < minCount) {
+					minIter = iter;
+					minCount = count;
+				}
+				if (count == 1) break;
+			}
+			(*minIter)->saveToDrive();
+		}
+		cache.push_back(dc);
+		dc->resetReferenceCount();
+	}
+	dc->addReference();
+	auto* data = dc->loadData();
+	dc->setDirty();
+	LeaveCriticalSection(&critSection);
+	return data;
 }
 
 std::map<std::string, FCB*>* RootDirMemoryHandler::getNameToFCBMap() {
@@ -16,7 +46,7 @@ std::map<std::string, FCB*>* RootDirMemoryHandler::getNameToFCBMap() {
 		unsigned long i = 0, j = 0, k = 0;
 		for (i = 0; i < FLICluster.getCurrentSize_32b(); i++) {
 			for (j = 0; j < FLICluster[i].getCurrentSize_32b(); j++) {
-				auto *fcbData = reinterpret_cast<FCB::FCBData*>(FLICluster[i][j].getData());
+				auto *fcbData = reinterpret_cast<FCB::FCBData*>(getDCFromCacheAndUpdateCache(i,j));
 				for ( k = 0; k < rowCountInDataCluster; k++) {
 					if (fcbData[k].allZeros()) {
 						nextFreeSlot.setIndices(i, j, k);
@@ -29,7 +59,7 @@ std::map<std::string, FCB*>* RootDirMemoryHandler::getNameToFCBMap() {
 						} catch(std::exception&) {}
 						std::string ext(std::string(".") + std::string(fcbData[k].ext, FEXTLEN));
 						fullName += ext;
-						nameToFCBmap[fullName] = new FCB(FCB::FCBIndex(i, j, k), &fcbData[k], part, bitVector, kernelFS, FLICluster[i][j]);
+						nameToFCBmap[fullName] = new FCB(FCB::FCBIndex(i, j, k), &fcbData[k], part, bitVector, kernelFS, this);
 					}
 					else {
 						leftoverFreeFileSlots.push(FCBIndex(i, j, k));
@@ -110,12 +140,13 @@ FCB * RootDirMemoryHandler::createNewFile(std::string& fpath) {
 		nextFreeSlot.ridc++;
 	}
 	try {
-		auto * fcbData = reinterpret_cast<FCB::FCBData*>(FLICluster[ind.sli][ind.dc].getData());
+		auto * fcbData = reinterpret_cast<FCB::FCBData*>(getDCFromCacheAndUpdateCache(ind.sli, ind.dc));
+		FLICluster[ind.sli][ind.dc].setDirty();
 		memcpy(fcbData[ind.ridc].name, name.c_str(), FNAMELEN);
 		memcpy(fcbData[ind.ridc].ext, ext.c_str(), FEXTLEN);
 		fcbData[ind.ridc].fileSize = 0;
 		fcbData[ind.ridc].firstIndexClusterNo = 0;
-		FCB* fcb = new FCB(FCB::FCBIndex(ind.sli, ind.dc, ind.ridc), &fcbData[ind.ridc], part, bitVector, kernelFS, FLICluster[ind.sli][ind.dc]);
+		FCB* fcb = new FCB(FCB::FCBIndex(ind.sli, ind.dc, ind.ridc), &fcbData[ind.ridc], part, bitVector, kernelFS, this);
 		nameToFCBmap[fpath] = fcb;
 		return fcb;
 	}
@@ -159,10 +190,3 @@ void RootDirMemoryHandler::format() {
 	while (!leftoverFreeFileSlots.empty()) leftoverFreeFileSlots.pop();
 	FLICluster.format();
 }
-
-
-
-
-
-
-

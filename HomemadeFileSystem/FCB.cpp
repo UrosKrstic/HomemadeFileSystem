@@ -1,18 +1,24 @@
 #include "FCB.h"
 #include  "KernelFile.h"
 #include "FirstLevelIndexCluster.h"
+#include "RootDirMemoryHandler.h"
 #include "PartitionError.h"
 #include "file.h"
 
 
-FCB::FCB(FCBIndex& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, DataCluster& dc) : fcbIndex(fcbInd), fcbData(data), part(p), bitVector(bitV), kernelFS(kerFS), myDC(dc) {
+FCB::FCB(FCBIndex& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, RootDirMemoryHandler* root) : fcbIndex(fcbInd), part(p), bitVector(bitV), kernelFS(kerFS), rootDir(root) {
+	fileSize = data->fileSize;
+	fliNo = data->firstIndexClusterNo;
 	InitializeCriticalSection(&criticalSection);
 	InitializeCriticalSection(&blockedThreadCritSection);
 	InitializeConditionVariable(&readCond);
 	InitializeConditionVariable(&writeCond);
 	InitializeConditionVariable(&noBlockedThreads);
+
 }
-FCB::FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, DataCluster& dc) : fcbIndex(fcbInd), fcbData(data), part(p), bitVector(bitV), kernelFS(kerFS), myDC(dc) {
+FCB::FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, RootDirMemoryHandler* root) : fcbIndex(fcbInd), part(p), bitVector(bitV), kernelFS(kerFS), rootDir(root) {
+	fileSize = data->fileSize;
+	fliNo = data->firstIndexClusterNo;
 	InitializeCriticalSection(&criticalSection);
 	InitializeCriticalSection(&blockedThreadCritSection);
 	InitializeConditionVariable(&readCond);
@@ -56,9 +62,9 @@ File * FCB::createFileInstance(char mode) {
 		if (deleted) return nullptr;
 	}
 	try {
-		if (fcbData->firstIndexClusterNo != 0 && loadFLI) {
+		if (fliNo != 0 && loadFLI) {
 			loadFLI = false;
-			fliCluster = new FirstLevelIndexCluster(fcbData->firstIndexClusterNo, part, false, true);
+			fliCluster = new FirstLevelIndexCluster(fliNo, part, false, true);
 			fliCluster->loadSLIClusters();
 		}
 
@@ -83,8 +89,8 @@ File * FCB::createFileInstance(char mode) {
 void FCB::clearClusters() {
 	std::vector<BytesCnt> cNoVector;
 	try {
-		if (fliCluster == nullptr && fcbData->firstIndexClusterNo != 0) {
-			fliCluster = new FirstLevelIndexCluster(fcbData->firstIndexClusterNo, part, false, true);
+		if (fliCluster == nullptr && fliNo != 0) {
+			fliCluster = new FirstLevelIndexCluster(fliNo, part, false, true);
 			fliCluster->loadSLIClusters();
 		}
 		if (fliCluster != nullptr) {
@@ -99,9 +105,8 @@ void FCB::clearClusters() {
 			fliCluster->getSecondLevelIndexClusters().clear();
  			bitVector.freeUpClusters(cNoVector);
 			delete fliCluster;
-			fcbData->firstIndexClusterNo = 0;
-			fcbData->fileSize = 0;
-			myDC.setDirty();
+			fliNo = 0;
+			fileSize = 0;
 			fliCluster = nullptr;
 		}
 	}
@@ -110,5 +115,16 @@ void FCB::clearClusters() {
 
 void FCB::saveToDrive() {
 	if (fliCluster != nullptr) fliCluster->saveToDrive();
+}
+
+void FCB::setFCBDataToFree() {
+	auto* fcbData = reinterpret_cast<FCBData*>(rootDir->getDCFromCacheAndUpdateCache(fcbIndex.secondLvlIndex, fcbIndex.dataClusterIndex));
+	fcbData[fcbIndex.rowInDataCluster].name[0] = 0;
+}
+
+void FCB::updateFCBData() {
+	auto* fcbData = reinterpret_cast<FCBData*>(rootDir->getDCFromCacheAndUpdateCache(fcbIndex.secondLvlIndex, fcbIndex.dataClusterIndex));
+	fcbData[fcbIndex.rowInDataCluster].fileSize = fileSize;
+	fcbData[fcbIndex.rowInDataCluster].firstIndexClusterNo = fliNo;
 }
 

@@ -7,7 +7,7 @@
 #include <iostream>
 
 KernelFile::KernelFile(FCB * myFCB, char mode, FirstLevelIndexCluster * fli) {
-	this->currentSize = myFCB->fcbData->fileSize;
+	this->currentSize = myFCB->fileSize;
 	this->currentPos = mode != 'a' ? 0 : currentSize;
 	this->mode = mode;
 	this->myFCB = myFCB;
@@ -39,9 +39,9 @@ KernelFile::~KernelFile() {
 		myFCB->currentMode = FCB::idle;
 		if (fliCluster != nullptr)
 			fliCluster->saveToDrive();
-		myFCB->fcbData->fileSize = currentSize;
+		myFCB->fileSize = currentSize;
 		myFCB->fliCluster = fliCluster;
-		myFCB->myDC.setDirty();
+		myFCB->updateFCBData();
 		WakeAllConditionVariable(&myFCB->readCond);
 		WakeConditionVariable(&myFCB->writeCond);
 	}
@@ -143,8 +143,7 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 			if (cNo == 0) return 0;
 			myFCB->fliCluster = fliCluster = new FirstLevelIndexCluster(cNo, myFCB->part, false, false);
 			fliCluster->initDataWithZeros();
-			myFCB->fcbData->firstIndexClusterNo = cNo;
-			myFCB->myDC.setDirty();
+			myFCB->fliNo = cNo;
 		}
 		catch(PartitionError&) {
 			std::vector<unsigned long> v = { cNo };
@@ -219,7 +218,7 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 					sliCluster->addCluster(cNo);
 				}
 				catch (ClusterFullException&) {
-					std::cout << "oops" << std::endl;
+					//std::cout << "oops" << std::endl;
 					return 0;
 				}
 			}
@@ -249,7 +248,7 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 }
 
 BytesCnt KernelFile::read(BytesCnt cnt, char * buffer)  {	
-	if (eof() || mode != 'r') return 0;
+	if (eof()) return 0;
 	auto oldCurrentPos = currentPos;
 	BytesCnt start = 0;
 	bool isSmallData = cnt <= cacheSize;
@@ -341,15 +340,15 @@ char KernelFile::truncate() {
 		cNoVec.push_back(fliCluster->getClusterNumber());
 		delete fliCluster;
 		myFCB->fliCluster = nullptr;
-		myFCB->fcbData->firstIndexClusterNo = 0;
+		myFCB->fliNo = 0;
 	}
 	else {
 		fliCluster->refreshIndexData();
 	}
 	myFCB->bitVector.freeUpClusters(cNoVec);
 	currentSize = currentPos;
-	myFCB->fcbData->fileSize = currentSize;
-	myFCB->myDC.setDirty();
+	myFCB->fileSize = currentSize;
+	myFCB->updateFCBData();
 
 	return 0;
 }

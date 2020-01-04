@@ -5,7 +5,6 @@
 
 FirstLevelIndexCluster::FirstLevelIndexCluster(ClusterNo clusterNumber, Partition * part, bool loadAllSubClusters, bool loadClusterData) : IndexCluster(clusterNumber, part, loadClusterData) {
 	auto * data_32 = reinterpret_cast<unsigned int *> (data);
-	//std::cout << "Pravi se FLI Cluster, podaci mu se ucitavaju: " << loadClusterData << std::endl;
 	if (loadAllSubClusters) {
 		for (unsigned i = 0; i < currentSize; i++) {
 			secondLvlClusters.push_back(new SecondLevelIndexCluster(data_32[i], part, loadAllSubClusters, loadClusterData));//loads SLI sub clusters

@@ -6,7 +6,9 @@
 
 class MemoryHandler {
 public:
-	MemoryHandler(BitVector& bVector, ClusterNo no, Partition * part, bool loadAllData) : bitVector(bVector), FLICluster(no, part, loadAllData), part(part) {}
+	MemoryHandler(BitVector& bVector, ClusterNo no, Partition * part, bool loadSubClusters) : bitVector(bVector), FLICluster(no, part, loadSubClusters), part(part) {
+		FLICluster.loadSLIClusters();
+	}
 protected:
 	BitVector& bitVector;
 	FirstLevelIndexCluster FLICluster;

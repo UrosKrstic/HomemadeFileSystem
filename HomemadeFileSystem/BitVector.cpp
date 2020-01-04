@@ -6,6 +6,7 @@
 
 BitVector::BitVector(Partition * part) : Cluster(bitVectorStartingCluster, part, false) {
 	totalClusterNo = part->getNumOfClusters();
+	if (totalClusterNo < 2) throw PartitionError();
 	totalBytes = totalClusterNo / 8;
 	remainder = totalClusterNo % 8;
 	sizeOfBitVector = static_cast<unsigned>(ceil(totalClusterNo / (ClusterSize * 8.)));
@@ -62,7 +63,9 @@ ClusterNo BitVector::getFreeClusterNumberForUse() {
 void BitVector::freeUpClusters(std::vector<ClusterNo>& clusterVector) {
 	dirty = true;
 	for (unsigned long clusterNo : clusterVector) {
-		data[clusterNo / 8] |= 1 << (7 - clusterNo % 8);
+		auto byte = clusterNo / 8;
+		if (byte <= totalBytes && remainder != 0 || byte < totalBytes)
+			data[byte] |= 1 << (7 - clusterNo % 8);
 	}
 }
 

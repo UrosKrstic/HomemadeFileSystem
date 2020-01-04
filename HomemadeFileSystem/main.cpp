@@ -1,21 +1,22 @@
-//#pragma warning(disable : 4996)
-//#include"testprimer.h"
-//
-//using namespace std;
-//
-//HANDLE nit1, nit2;
-//DWORD ThreadID;
-//
-//HANDLE semMain = CreateSemaphore(NULL, 0, 32, NULL);
-//HANDLE sem12 = CreateSemaphore(NULL, 0, 32, NULL);
-//HANDLE sem21 = CreateSemaphore(NULL, 0, 32, NULL);
-//HANDLE mutex = CreateSemaphore(NULL, 1, 32, NULL);
-//
-//Partition *partition;
-//
-//char *ulazBuffer;
-//int ulazSize;
-//
+#pragma warning(disable : 4996)
+#include"testprimer.h"
+#include <apiquery2.h>
+
+using namespace std;
+
+HANDLE nit1, nit2;
+DWORD ThreadID;
+
+HANDLE semMain = CreateSemaphore(NULL, 0, 32, NULL);
+HANDLE sem12 = CreateSemaphore(NULL, 0, 32, NULL);
+HANDLE sem21 = CreateSemaphore(NULL, 0, 32, NULL);
+HANDLE mutex = CreateSemaphore(NULL, 1, 32, NULL);
+
+Partition *partition;
+
+char *ulazBuffer;
+int ulazSize;
+
 //int main() {
 //	clock_t startTime, endTime;
 //	cout << "Pocetak testa!" << endl;
@@ -69,9 +70,9 @@
 
 using namespace std;
 
-HANDLE semMain = CreateSemaphore(NULL, 0, 10, NULL);
+HANDLE sem = CreateSemaphore(NULL, 0, 10, NULL);
 HANDLE semS = CreateSemaphore(NULL, 1, 10, NULL);
-HANDLE sem12 = CreateSemaphore(NULL, 0, 10, NULL);
+//HANDLE sem12 = CreateSemaphore(NULL, 0, 10, NULL);
 HANDLE sem13 = CreateSemaphore(NULL, 0, 10, NULL);
 HANDLE semaphor = CreateSemaphore(NULL, 0, 10, NULL);
 
@@ -102,7 +103,7 @@ DWORD WINAPI basic_operation_tester()
 
 		char* name = new char[a.length() + 1];
 		name[a.length()] = '\0';
-		for (int i = 0; i < a.length(); i++)
+		for (unsigned i = 0; i < a.length(); i++)
 			name[i] = a[i];
 		file = FS::open((char*)a.c_str(), 'w');
 
@@ -114,7 +115,7 @@ DWORD WINAPI basic_operation_tester()
 		else
 		{
 			cout << "Uspesno otvaranje fajla " << name << endl;
-			if (i == 25) {
+			if (i != 25) {
 				char buffer[601];
 				buffer[600] = '\0';
 				memset(buffer, 'a', 600);
@@ -131,7 +132,8 @@ DWORD WINAPI basic_operation_tester()
 			}
 			delete file;
 			cout << "Zatvaranje fajla uspesno odradjeno" << endl;
-
+			if (!(i % 6) && i != 0) 
+				FS::deleteFile(const_cast<char*>(a.c_str()));
 		}
 	}
 
@@ -139,7 +141,7 @@ DWORD WINAPI basic_operation_tester()
 	cout << "Fajl " << checker << ((FS::doesExist(checker) == 0) ? "ne postoji" : "postoji") << " na particiji" << endl;
 	FS::unmount();
 	delete p;
-	signalS(semMain);
+	signalS(sem);
 	return 0;
 }
 int main()
@@ -153,11 +155,11 @@ int main()
 	InitializeCriticalSection(&mut);
 
 	for (int i = 0; i < 1; i++)
-		waitS(semMain);
+		waitS(sem);
 
-	CloseHandle(semMain);
+	CloseHandle(sem);
 	CloseHandle(semS);
-	CloseHandle(sem12);
+	//CloseHandle(sem12);
 	CloseHandle(sem13);
 	CloseHandle(semaphor);
 	//CloseHandle(thr1);
@@ -165,7 +167,7 @@ int main()
 
 	clock_t end = clock();
 	cout << "Test finished!" << endl;
-	double tm = (end - start) * 1.0 * (1.0 * (CLOCKS_PER_SEC) / 1000);
+	double tm = (1. * end - start) * (CLOCKS_PER_SEC / 1000.);
 	cout << "Time: " << tm << "ms!" << endl;
 	system("pause");
 	return 0;

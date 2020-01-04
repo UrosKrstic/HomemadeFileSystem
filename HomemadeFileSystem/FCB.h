@@ -6,6 +6,7 @@
 struct FCBData;
 class KernelFile;
 class FirstLevelIndexCluster;
+class RootDirMemoryHandler;
 
 
 class FCB {
@@ -44,8 +45,8 @@ public:
 	} FCBData;
 
 	friend class KernelFile;
-	FCB(FCBIndex& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, DataCluster& dc);
-	FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, DataCluster& dc);
+	FCB(FCBIndex& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, RootDirMemoryHandler* root);
+	FCB(FCBIndex&& fcbInd, FCBData * data, Partition * p, BitVector& bitV, KernelFS& kerFS, RootDirMemoryHandler* root);
 
 	FCB(const FCB&) = delete;
 	FCB(FCB&&) = delete;
@@ -56,7 +57,8 @@ public:
 	File * createFileInstance(char mode);
 	void clearClusters();
 	void saveToDrive();
-	void setFCBDataToFree() { fcbData->name[0] = 0; }
+	void setFCBDataToFree();
+	void updateFCBData();
 	FCBIndex getFCBIndex() { return fcbIndex; }
 	unsigned getNumberOfOpenFiles() { return numberOfOpenFiles; }
 private:
@@ -71,11 +73,12 @@ private:
 	Mode currentMode = idle;
 	
 	FCBIndex fcbIndex;
-	FCBData * fcbData;
 	Partition * part;
 	BitVector &bitVector;
 	KernelFS &kernelFS;
-	DataCluster& myDC;
+	RootDirMemoryHandler* rootDir;
+	unsigned int fileSize;
+	unsigned int fliNo;
 	FirstLevelIndexCluster * fliCluster = nullptr;
 	
 	static constexpr unsigned numOfFreeBytes = 12;
