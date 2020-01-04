@@ -115,9 +115,6 @@
     <ClCompile Include="KernelFile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MemoryHandler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="RootDirMemoryHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

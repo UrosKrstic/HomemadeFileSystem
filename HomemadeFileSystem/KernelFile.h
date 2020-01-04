@@ -31,6 +31,8 @@ public:
 	char truncate();
 	
 private:
+	static constexpr int defaultCacheSize = 32;
+	
 	//char * getDataFromCacheAndUpdateCache(BytesCnt dataClusterStartByte, DataClusterWithReferenceBit * currDC);
 	char * getDataFromCacheAndUpdateCache(DataCluster* dc, bool isSmallData);
 
@@ -39,13 +41,11 @@ private:
 	unsigned int currentSize;
 	unsigned int currentPos;
 	FirstLevelIndexCluster* fliCluster;
+	unsigned int cacheSize = defaultCacheSize;
 	//std::map<BytesCnt, DataClusterWithReferenceBit*> byteCntToDataCluster;
 	//std::map<BytesCnt, DataClusterWithReferenceBit*> cache;
 	std::vector<DataCluster*> cache;
 	//std::map<DataCluster*, DataClusterWithReferenceBit*> cache;
-
-	static constexpr int cacheSize = 32;
-
 };
 
 #endif //_KERNELFILE_H_

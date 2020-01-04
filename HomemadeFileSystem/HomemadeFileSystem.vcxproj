@@ -155,7 +155,6 @@
     <ClCompile Include="KernelFile.cpp" />
     <ClCompile Include="KernelFS.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="MemoryHandler.cpp" />
     <ClCompile Include="nit1.cpp" />
     <ClCompile Include="nit2.cpp" />
     <ClCompile Include="PartitionError.cpp" />

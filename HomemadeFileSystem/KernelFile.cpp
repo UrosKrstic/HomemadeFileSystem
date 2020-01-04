@@ -154,7 +154,8 @@ char KernelFile::write(BytesCnt cnt, char * buffer) {
 	BytesCnt oldCurrentPos = currentPos;
 	BytesCnt start = 0;
 	auto& sliClusters = fliCluster->getSecondLevelIndexClusters();
-	bool isSmallData = cnt <= cacheSize;
+	bool isSmallData = cnt <= defaultCacheSize;
+	if (cnt >= 512 * ClusterSize) cacheSize = cnt / (ClusterSize * 10);
 
 	while (cnt > 0) {
 		try {
